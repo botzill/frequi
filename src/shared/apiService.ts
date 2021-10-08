@@ -9,7 +9,7 @@ let globalStore;
 export function useApi(userService: UserService, botId: string) {
   const api = axios.create({
     baseURL: userService.getBaseUrl(),
-    timeout: 10000,
+    timeout: 120000,
     withCredentials: true,
   });
   // Sent auth headers interceptor
