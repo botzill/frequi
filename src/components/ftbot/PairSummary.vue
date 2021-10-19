@@ -12,7 +12,7 @@
       @click="setSelectedPair(comb.pair)"
     >
       <div>
-        {{ comb.pair }}
+        {{ comb.pair }}({{comb.tradeCount}})
         <span v-if="comb.locks" :title="comb.lockReason"> &#128274; </span>
       </div>
 
