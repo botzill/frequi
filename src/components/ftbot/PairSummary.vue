@@ -2,7 +2,7 @@
   <!-- <b-table class="table-sm" :items="combinedPairList" :fields="tableFields"> </b-table> -->
   <div>
     <div class="controls">
-      <b-dropdown size="sm" text="Sort" class="m-2">
+      <b-dropdown size="sm" text="Sort" class="sort m-2">
         <b-dropdown-item-button @click="setSortBy('name')">
           By name
           <span v-if="sortBy === 'name'" v-html="sortSymbol"
@@ -184,5 +184,15 @@ export default class PairSummary extends Vue {
 <style scoped>
 .list-group {
   text-align: left;
+}
+
+.controls {
+  display: flex;
+  flex-direction: column;
+}
+
+.sort {
+  align-self: end;
+  padding-right: 14px;
 }
 </style>
