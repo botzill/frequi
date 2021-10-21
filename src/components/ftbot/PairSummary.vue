@@ -52,6 +52,7 @@ import ProfitPill from '@/components/general/ProfitPill.vue';
 const ftbot = namespace('ftbot');
 
 interface CombinedPairList {
+  id: number;
   pair: string;
   lockReason: string;
   profitString: string;
@@ -59,7 +60,7 @@ interface CombinedPairList {
   locks?: Lock;
   profit: number;
   profitAbs: number;
-  tradeCount: number;
+  openTimestamp: number;
 }
 
 const sortAscSymbol = '&#8595;';
