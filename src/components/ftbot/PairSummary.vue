@@ -1,25 +1,41 @@
 <template>
   <!-- <b-table class="table-sm" :items="combinedPairList" :fields="tableFields"> </b-table> -->
+  <div>
+    <div class="controls">
+      <b-dropdown size="sm" text="Sort" class="m-2">
+        <b-dropdown-item-button @click="setSortBy('name')">
+          By name
+          <span v-if="sortBy === 'name'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
+        <b-dropdown-item-button @click="setSortBy('profit')"
+          >By Profit <span v-if="sortBy === 'profit'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
+        <b-dropdown-item-button @click="setSortBy('timestamp')"
+          >By Open Time <span v-if="sortBy === 'timestamp'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
+      </b-dropdown>
+    </div>
 
-  <b-list-group>
-    <b-list-group-item
-      v-for="comb in combinedPairList"
-      :key="comb.pair"
-      button
-      class="d-flex justify-content-between align-items-center py-1"
-      :active="comb.pair === selectedPair"
-      :title="`${comb.pair} - ${comb.tradeCount} trades`"
-      @click="setSelectedPair(comb.pair)"
-    >
-      <div>
-        {{ comb.pair }}({{ comb.tradeCount }})
-        <span v-if="comb.locks" :title="comb.lockReason"> &#128274; </span>
-      </div>
+    <b-list-group>
+      <b-list-group-item
+        v-for="comb in combinedPairList"
+        :key="comb.id"
+        button
+        class="d-flex justify-content-between align-items-center py-1"
+        :active="comb.pair === selectedPair"
+        :title="`${comb.pair}`"
+        @click="setSelectedPair(comb.pair, comb.id)"
+      >
+        <div>
+          {{ comb.pair }}
+          <span v-if="comb.locks" :title="comb.lockReason"> &#128274; </span>
+        </div>
 
-      <TradeProfit v-if="comb.trade && !backtestMode" :trade="comb.trade" />
-      <ProfitPill v-if="backtestMode && comb.tradeCount > 0" :profit-ratio="comb.profit" />
-    </b-list-group-item>
-  </b-list-group>
+        <TradeProfit v-if="comb.trade && !backtestMode" :trade="comb.trade" />
+        <ProfitPill v-if="backtestMode && comb.tradeCount > 0" :profit-ratio="comb.profit" />
+      </b-list-group-item>
+    </b-list-group>
+  </div>
 </template>
 
 <script lang="ts">
@@ -28,6 +44,8 @@ import { BotStoreGetters } from '@/store/modules/ftbot';
 import { Lock, Trade } from '@/types';
 import { Component, Prop, Vue } from 'vue-property-decorator';
 import { namespace } from 'vuex-class';
+import SortAscendingIcon from 'vue-material-design-icons/SortAscending.vue';
+import SortDescendingIcon from 'vue-material-design-icons/SortDescending.vue';
 import TradeProfit from '@/components/ftbot/TradeProfit.vue';
 import ProfitPill from '@/components/general/ProfitPill.vue';
 
@@ -44,7 +62,10 @@ interface CombinedPairList {
   tradeCount: number;
 }
 
-@Component({ components: { TradeProfit, ProfitPill } })
+const sortAscSymbol = '&#8595;';
+const sortDescSymbol = '&#8593;';
+
+@Component({ components: { SortAscendingIcon, SortDescendingIcon, TradeProfit, ProfitPill } })
 export default class PairSummary extends Vue {
   @Prop({ required: true }) pairlist!: string[];
 
@@ -53,14 +74,22 @@ export default class PairSummary extends Vue {
   @Prop({ required: true }) trades!: Trade[];
 
   /** Sort method, "normal" (sorts by open trades > pairlist -> locks) or "profit" */
-  @Prop({ required: false, default: 'normal' }) sortMethod!: string;
+  // @Prop({ required: false, default: 'name' }) sortBy!: string;
+
+  // @Prop({ required: false, default: 'asc' }) sortMethod!: string;
 
   @Prop({ required: false, default: false }) backtestMode!: boolean;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  @ftbot.Action setSelectedPair!: (pair: string) => void;
+  @ftbot.Action setSelectedPair!: (pair: string, id: string) => void;
 
   @ftbot.Getter [BotStoreGetters.selectedPair]!: string;
+
+  sortBy = 'name';
+
+  sortMethod = 'asc';
+
+  sortSymbol = sortAscSymbol;
 
   timestampms = timestampms;
 
@@ -69,8 +98,15 @@ export default class PairSummary extends Vue {
   get combinedPairList() {
     const comb: CombinedPairList[] = [];
 
-    this.pairlist.forEach((pair) => {
-      const trades: Trade[] = this.trades.filter((el) => el.pair === pair);
+    this.trades.forEach((trade) => {
+      let profitString = '';
+      const {
+        trade_id: id,
+        pair,
+        profit_ratio: profit,
+        profit_abs: profitAbs,
+        open_timestamp: openTimestamp,
+      } = trade;
       const allLocks = this.currentLocks.filter((el) => el.pair === pair);
       let lockReason = '';
       let locks;
@@ -81,48 +117,39 @@ export default class PairSummary extends Vue {
         [locks] = allLocks;
         lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
       }
-      let profitString = '';
-      let profit = 0;
-      let profitAbs = 0;
-      trades.forEach((trade) => {
-        profit += trade.profit_ratio;
-        profitAbs += trade.profit_abs;
+      profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
+      comb.push({
+        id,
+        pair,
+        locks,
+        lockReason,
+        trade,
+        profitString,
+        profit,
+        profitAbs,
+        openTimestamp,
       });
-      const tradeCount = trades.length;
-      const trade = tradeCount ? trades[0] : undefined;
-      if (trades.length > 0) {
-        profitString = `Current profit: ${formatPercent(profit)}`;
-      }
-      if (trade) {
-        profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
-      }
-      comb.push({ pair, trade, locks, lockReason, profitString, profit, profitAbs, tradeCount });
     });
-    if (this.sortMethod === 'profit') {
+    if (this.sortBy === 'name') {
+      comb.sort((a, b) => {
+        if (a.pair > b.pair) {
+          return this.sortMethod === 'asc' ? 1 : -1;
+        }
+        return this.sortMethod === 'asc' ? -1 : 1;
+      });
+    } else if (this.sortBy === 'profit') {
       comb.sort((a, b) => {
         if (a.profit > b.profit) {
-          return -1;
+          return this.sortMethod === 'asc' ? 1 : -1;
         }
-        return 1;
+        return this.sortMethod === 'asc' ? -1 : 1;
       });
-    } else {
-      // sort Pairs: "with open trade" -> available -> locked
+    } else if (this.sortBy === 'timestamp') {
       comb.sort((a, b) => {
-        if (a.trade && !b.trade) {
-          return -1;
+        if (a.openTimestamp > b.openTimestamp) {
+          return this.sortMethod === 'asc' ? 1 : -1;
         }
-        if (a.trade && b.trade) {
-          // 2 open trade pairs
-          return a.trade.trade_id > b.trade.trade_id ? 1 : -1;
-        }
-        if (!a.locks && b.locks) {
-          return -1;
-        }
-        if (a.locks && b.locks) {
-          // Both have locks
-          return a.locks.lock_end_timestamp > b.locks.lock_end_timestamp ? 1 : -1;
-        }
-        return 1;
+        return this.sortMethod === 'asc' ? -1 : 1;
       });
     }
     return comb;
@@ -142,6 +169,14 @@ export default class PairSummary extends Vue {
         formatter: (value) => formatPercent(value, 3),
       },
     ];
+  }
+
+  setSortBy(by) {
+    if (this.sortBy === by) {
+      this.sortMethod = this.sortMethod === 'asc' ? 'desc' : 'asc';
+    }
+    this.sortSymbol = this.sortMethod === 'asc' ? sortAscSymbol : sortDescSymbol;
+    this.sortBy = by;
   }
 }
 </script>

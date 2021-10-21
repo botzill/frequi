@@ -507,8 +507,8 @@ export function createBotSubStore(botId: string, botName: string) {
       [BotStoreActions.setDetailTrade]({ commit }, trade: Trade) {
         commit('setDetailTrade', trade);
       },
-      [BotStoreActions.setSelectedPair]({ commit }, pair: string) {
-        commit('setSelectedPair', pair);
+      [BotStoreActions.setSelectedPair]({ commit }, pair: string, id: string) {
+        commit('setSelectedPair', pair, id);
       },
       [BotStoreActions.saveCustomPlotConfig]({ commit }, plotConfig: PlotConfigStorage) {
         commit('saveCustomPlotConfig', plotConfig);
