@@ -2,6 +2,14 @@
   <!-- <b-table class="table-sm" :items="combinedPairList" :fields="tableFields"> </b-table> -->
   <div>
     <div class="controls">
+      <b-dropdown size="sm" text="Filter" class="sort m-2">
+        <b-dropdown-item-button @click="setFilterType('all_pairs')">
+          All pairs</b-dropdown-item-button
+        >
+        <b-dropdown-item-button @click="setFilterType('open_trades')"
+          >Only with open trades</b-dropdown-item-button
+        >
+      </b-dropdown>
       <b-dropdown size="sm" text="Sort" class="sort m-2">
         <b-dropdown-item-button @click="setSortBy('name')">
           By name
@@ -86,6 +94,8 @@ export default class PairSummary extends Vue {
 
   @ftbot.Getter [BotStoreGetters.selectedPair]!: string;
 
+  filterType = 'open_trades';
+
   sortBy = 'name';
 
   sortMethod = 'asc';
@@ -99,38 +109,82 @@ export default class PairSummary extends Vue {
   get combinedPairList() {
     const comb: CombinedPairList[] = [];
 
-    this.trades.forEach((trade) => {
-      let profitString = '';
-      const {
-        trade_id: id,
-        pair,
-        profit_ratio: profit,
-        profit_abs: profitAbs,
-        open_timestamp: openTimestamp,
-      } = trade;
-      const allLocks = this.currentLocks.filter((el) => el.pair === pair);
-      let lockReason = '';
-      let locks;
+    if (this.filterType === 'all_pairs') {
+      this.pairlist.forEach((pair, index) => {
+        const trades: Trade[] = this.trades.filter((el) => el.pair === pair);
+        const allLocks = this.currentLocks.filter((el) => el.pair === pair);
+        let lockReason = '';
+        let locks;
+        const id = index;
+        const openTimestamp = 0;
 
-      // Sort to have longer timeframe in front
-      allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
-      if (allLocks.length > 0) {
-        [locks] = allLocks;
-        lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
-      }
-      profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
-      comb.push({
-        id,
-        pair,
-        locks,
-        lockReason,
-        trade,
-        profitString,
-        profit,
-        profitAbs,
-        openTimestamp,
+        // Sort to have longer timeframe in front
+        allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
+        if (allLocks.length > 0) {
+          [locks] = allLocks;
+          lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
+        }
+        let profitString = '';
+        let profit = 0;
+        let profitAbs = 0;
+        trades.forEach((trade) => {
+          profit += trade.profit_ratio;
+          profitAbs += trade.profit_abs;
+        });
+        const tradeCount = trades.length;
+        const trade = tradeCount ? trades[0] : undefined;
+        if (trades.length > 0) {
+          profitString = `Current profit: ${formatPercent(profit)}`;
+        }
+        if (trade) {
+          profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
+        }
+        comb.push({
+          id,
+          pair,
+          trade,
+          locks,
+          lockReason,
+          profitString,
+          profit,
+          profitAbs,
+          openTimestamp,
+        });
       });
-    });
+    } else if (this.filterType === 'open_trades') {
+      this.trades.forEach((trade) => {
+        let profitString = '';
+        const {
+          trade_id: id,
+          pair,
+          profit_ratio: profit,
+          profit_abs: profitAbs,
+          open_timestamp: openTimestamp,
+        } = trade;
+        const allLocks = this.currentLocks.filter((el) => el.pair === pair);
+        let lockReason = '';
+        let locks;
+
+        // Sort to have longer timeframe in front
+        allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
+        if (allLocks.length > 0) {
+          [locks] = allLocks;
+          lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
+        }
+        profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
+        comb.push({
+          id,
+          pair,
+          locks,
+          lockReason,
+          trade,
+          profitString,
+          profit,
+          profitAbs,
+          openTimestamp,
+        });
+      });
+    }
     if (this.sortBy === 'name') {
       comb.sort((a, b) => {
         if (a.pair > b.pair) {
@@ -172,6 +226,10 @@ export default class PairSummary extends Vue {
     ];
   }
 
+  setFilterType(type) {
+    this.filterType = type;
+  }
+
   setSortBy(by) {
     if (this.sortBy === by) {
       this.sortMethod = this.sortMethod === 'asc' ? 'desc' : 'asc';
@@ -189,7 +247,7 @@ export default class PairSummary extends Vue {
 
 .controls {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
 }
 
 .sort {
