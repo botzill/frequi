@@ -6,8 +6,11 @@
         <b-dropdown-item-button @click="setFilterType('all_pairs')">
           All pairs</b-dropdown-item-button
         >
-        <b-dropdown-item-button @click="setFilterType('open_trades')"
-          >Only with open trades</b-dropdown-item-button
+        <b-dropdown-item-button @click="setFilterType('no_orders')"
+          >Only without open orders</b-dropdown-item-button
+        >
+        <b-dropdown-item-button @click="setFilterType('open_orders')"
+          >Only with open orders</b-dropdown-item-button
         >
       </b-dropdown>
       <b-dropdown size="sm" text="Sort" class="sort m-2">
@@ -94,7 +97,7 @@ export default class PairSummary extends Vue {
 
   @ftbot.Getter [BotStoreGetters.selectedPair]!: string;
 
-  filterType = 'open_trades';
+  filterType = 'open_orders';
 
   sortBy = 'name';
 
@@ -151,7 +154,40 @@ export default class PairSummary extends Vue {
           openTimestamp,
         });
       });
-    } else if (this.filterType === 'open_trades') {
+    } else if (this.filterType === 'no_orders') {
+      this.pairlist.forEach((pair, index) => {
+        const trades: Trade[] = this.trades.filter((el) => el.pair === pair);
+        const allLocks = this.currentLocks.filter((el) => el.pair === pair);
+        let lockReason = '';
+        let locks;
+        const id = index;
+        const openTimestamp = 0;
+        const trade = undefined;
+        const profitString = '';
+        const profit = 0;
+        const profitAbs = 0;
+
+        // Sort to have longer timeframe in front
+        allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
+        if (allLocks.length > 0) {
+          [locks] = allLocks;
+          lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
+        }
+        if (!trades.length) {
+          comb.push({
+            id,
+            pair,
+            trade,
+            locks,
+            lockReason,
+            profitString,
+            profit,
+            profitAbs,
+            openTimestamp,
+          });
+        }
+      });
+    } else if (this.filterType === 'open_orders') {
       this.trades.forEach((trade) => {
         let profitString = '';
         const {
