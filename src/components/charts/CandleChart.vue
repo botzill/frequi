@@ -137,6 +137,10 @@ export default class CandleChart extends Vue {
   }
 
   initializeChartOptions() {
+    function numberWithCommas(x) {
+      return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    }
+
     this.chartOptions = {
       title: [
         {
@@ -175,6 +179,69 @@ export default class CandleChart extends Vue {
           const obj = { top: 60 };
           obj[['left', 'right'][+(pos[0] < size.viewSize[0] / 2)]] = 5;
           return obj;
+        },
+        formatter(params) {
+          function toLabelValueHtml(label, value) {
+            return `<div><span style="font-weight: 600;">${label}: </span><span>${value}</span></div>`;
+          }
+
+          const date = params[0].axisValueLabel;
+          const sectionsHtml: [string] = [''];
+          const Candles = params.find((p) => p.seriesName === 'Candles');
+          const Volume = params.find((p) => p.seriesName === 'Volume');
+          const Buy = params.find((p) => p.seriesName === 'Buy');
+          const Sell = params.find((p) => p.seriesName === 'Sell');
+          const Trades = params.find((p) => p.seriesName === 'Trades');
+          const TradesClose = params.find((p) => p.seriesName === 'Trades Close');
+          let buyTag = (Candles || Volume || Buy || Sell).data[14] || '';
+          let tradeId;
+
+          if (Volume) {
+            sectionsHtml.push(toLabelValueHtml('Volume', numberWithCommas(Volume.data[5])));
+          }
+          if (Candles) {
+            sectionsHtml.push(
+              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
+                'Candles',
+                '',
+              )}<div style="display: flex; flex-direction: column;">
+              <span>  - open: ${Candles.data[1]}</span>
+              <span>  - highest: ${Candles.data[2]}</span>
+              <span>  - lowest: ${Candles.data[3]}</span>
+              <span>  - close: ${Candles.data[4]}</span>
+              </div></div>`,
+            );
+          }
+          if (Buy && Buy.data[16]) {
+            sectionsHtml.push(toLabelValueHtml('Buy', numberWithCommas(Buy.data[16])));
+          }
+          if (Sell && Sell.data[16]) {
+            sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[16])));
+          }
+          if (Trades) {
+            const trade = Trades.data[2];
+            tradeId = trade.tradeId;
+            buyTag = trade.buyTag;
+            sectionsHtml.push(toLabelValueHtml('Trades', numberWithCommas(Trades.data[1])));
+          }
+          if (TradesClose) {
+            const trade = TradesClose.data[2];
+            tradeId = trade.tradeId;
+            buyTag = trade.buyTag;
+            sectionsHtml.push(
+              toLabelValueHtml('Trades Close', numberWithCommas(TradesClose.data[1])),
+            );
+          }
+
+          const html = `
+            <div style="display: flex; flex-direction: column; text-align: left;">
+              ${toLabelValueHtml('Date', date)}
+              ${buyTag ? toLabelValueHtml('Buy Tag', buyTag) : ''}
+              ${tradeId ? toLabelValueHtml('Trade ID', tradeId) : ''}
+              ${sectionsHtml.join('\n')}
+            </div>
+          `;
+          return html;
         },
       },
       axisPointer: {
@@ -309,6 +376,8 @@ export default class CandleChart extends Vue {
         });
       }
     }
+
+    console.log('dataset:', this.dataset);
 
     const options: EChartsOption = {
       dataset: {
@@ -525,7 +594,7 @@ export default class CandleChart extends Vue {
     if (!Array.isArray(this.chartOptions.legend) && this.chartOptions.legend?.data) {
       this.chartOptions.legend.data.push(name);
     }
-    const sp: ScatterSeriesOption = {
+    const sp: ScatterSeriesOption | (number | string | object) = {
       name,
       type: 'scatter',
       xAxisIndex: 0,
@@ -541,7 +610,7 @@ export default class CandleChart extends Vue {
     if (!Array.isArray(this.chartOptions.legend) && this.chartOptions.legend?.data) {
       this.chartOptions.legend.data.push(nameClose);
     }
-    const closeSeries: ScatterSeriesOption = {
+    const closeSeries: ScatterSeriesOption | (number | string | object) = {
       name: nameClose,
       type: 'scatter',
       xAxisIndex: 0,
@@ -562,15 +631,19 @@ export default class CandleChart extends Vue {
 
   /** Return trade entries for charting */
   getTradeEntries() {
-    const trades: (string | number)[][] = [];
-    const tradesClose: (string | number)[][] = [];
+    const trades: (string | number | object)[][] = [];
+    const tradesClose: (string | number | object)[][] = [];
     for (let i = 0, len = this.filteredTrades.length; i < len; i += 1) {
       const trade: Trade = this.filteredTrades[i];
       if (
         trade.open_timestamp >= this.dataset.data_start_ts &&
         trade.open_timestamp <= this.dataset.data_stop_ts
       ) {
-        trades.push([roundTimeframe(this.timeframems, trade.open_timestamp), trade.open_rate]);
+        trades.push([
+          roundTimeframe(this.timeframems, trade.open_timestamp),
+          trade.open_rate,
+          { tradeId: trade.trade_id, buyTag: trade.buy_tag },
+        ]);
       }
       if (
         trade.close_timestamp !== undefined &&
@@ -581,6 +654,7 @@ export default class CandleChart extends Vue {
           tradesClose.push([
             roundTimeframe(this.timeframems, trade.close_timestamp),
             trade.close_rate,
+            { tradeId: trade.trade_id, buyTag: trade.buy_tag },
           ]);
         }
       }
