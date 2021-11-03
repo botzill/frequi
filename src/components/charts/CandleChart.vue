@@ -185,6 +185,7 @@ export default class CandleChart extends Vue {
             return `<div><span style="font-weight: 600;">${label}: </span><span>${value}</span></div>`;
           }
 
+          const SPACES = '&#160;&#160;';
           const date = params[0].axisValueLabel;
           const sectionsHtml: [string] = [''];
           const Candles = params.find((p) => p.seriesName === 'Candles');
@@ -192,9 +193,8 @@ export default class CandleChart extends Vue {
           const Buy = params.find((p) => p.seriesName === 'Buy');
           const Sell = params.find((p) => p.seriesName === 'Sell');
           const Trades = params.find((p) => p.seriesName === 'Trades');
-          const TradesClose = params.find((p) => p.seriesName === 'Trades Close');
-          let buyTag = (Candles || Volume || Buy || Sell).data[14] || '';
-          let tradeId;
+          const TradesCloseList = params.filter((p) => p.seriesName === 'Trades Close');
+          const buyTag = (Candles || Volume || Buy || Sell).data[14] || params[0].data[8];
 
           if (Volume) {
             sectionsHtml.push(toLabelValueHtml('Volume', numberWithCommas(Volume.data[5])));
@@ -205,31 +205,37 @@ export default class CandleChart extends Vue {
                 'Candles',
                 '',
               )}<div style="display: flex; flex-direction: column;">
-              <span>  - open: ${Candles.data[1]}</span>
-              <span>  - highest: ${Candles.data[2]}</span>
-              <span>  - lowest: ${Candles.data[3]}</span>
-              <span>  - close: ${Candles.data[4]}</span>
+              <span>${SPACES}open = ${Candles.data[1]}</span>
+              <span>${SPACES}highest = ${Candles.data[2]}</span>
+              <span>${SPACES}lowest = ${Candles.data[3]}</span>
+              <span>${SPACES}close = ${Candles.data[4]}</span>
               </div></div>`,
             );
           }
-          if (Buy && Buy.data[16]) {
-            sectionsHtml.push(toLabelValueHtml('Buy', numberWithCommas(Buy.data[16])));
+          if (Buy && Buy.data[11]) {
+            sectionsHtml.push(toLabelValueHtml('Buy', numberWithCommas(Buy.data[11])));
           }
-          if (Sell && Sell.data[16]) {
-            sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[16])));
+          if (Sell && Sell.data[12]) {
+            sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[12])));
           }
           if (Trades) {
-            const trade = Trades.data[2];
-            tradeId = trade.tradeId;
-            buyTag = trade.buyTag;
             sectionsHtml.push(toLabelValueHtml('Trades', numberWithCommas(Trades.data[1])));
           }
-          if (TradesClose) {
-            const trade = TradesClose.data[2];
-            tradeId = trade.tradeId;
-            buyTag = trade.buyTag;
+          if (TradesCloseList.length) {
             sectionsHtml.push(
-              toLabelValueHtml('Trades Close', numberWithCommas(TradesClose.data[1])),
+              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
+                'Trades Close',
+                '',
+              )}<div style="display: flex; flex-direction: column;">
+              ${TradesCloseList.map((t) => {
+                const trade = t.data[2];
+                const { tradeId } = trade;
+                const value = t.data[1];
+
+                return `<span>${SPACES}#${tradeId} = ${numberWithCommas(value)}</span>`;
+              }).join('')}
+            
+              </div></div>`,
             );
           }
 
@@ -237,7 +243,6 @@ export default class CandleChart extends Vue {
             <div style="display: flex; flex-direction: column; text-align: left;">
               ${toLabelValueHtml('Date', date)}
               ${buyTag ? toLabelValueHtml('Buy Tag', buyTag) : ''}
-              ${tradeId ? toLabelValueHtml('Trade ID', tradeId) : ''}
               ${sectionsHtml.join('\n')}
             </div>
           `;
