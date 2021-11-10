@@ -12,6 +12,7 @@
 </template>
 
 <script lang="ts">
+// @ts-nocheck
 import { Component, Vue, Prop, Watch } from 'vue-property-decorator';
 import { Trade, PairHistory, PlotConfig } from '@/types';
 import randomColor from '@/shared/randomColor';
@@ -96,6 +97,8 @@ export default class CandleChart extends Vue {
   sellData = [] as Array<number>[];
 
   chartOptions: EChartsOption = {};
+
+  activeSeries: Record<string, any> | null = {};
 
   @Watch('dataset')
   datasetChanged() {
