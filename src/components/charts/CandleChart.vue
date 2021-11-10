@@ -1,6 +1,13 @@
 <template>
   <div class="row flex-grow-1 chart-wrapper">
-    <v-chart v-if="hasData" ref="candleChart" :theme="theme" autoresize manual-update />
+    <v-chart
+      v-if="hasData"
+      ref="candleChart"
+      :theme="theme"
+      autoresize
+      manual-update
+      @click="onClick"
+    />
   </div>
 </template>
 
@@ -141,6 +148,12 @@ export default class CandleChart extends Vue {
       return x.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
     }
 
+    const indicatorsNames = Object.keys(this.plotConfig.main_plot).concat(
+      ...Object.keys(this.plotConfig.subplots).map((o) => [
+        ...Object.keys(this.plotConfig.subplots[o]),
+      ]),
+    );
+
     this.chartOptions = {
       title: [
         {
@@ -192,8 +205,9 @@ export default class CandleChart extends Vue {
           const Volume = params.find((p) => p.seriesName === 'Volume');
           const Buy = params.find((p) => p.seriesName === 'Buy');
           const Sell = params.find((p) => p.seriesName === 'Sell');
-          const Trades = params.find((p) => p.seriesName === 'Trades');
+          const TradesList = params.filter((p) => p.seriesName === 'Trades');
           const TradesCloseList = params.filter((p) => p.seriesName === 'Trades Close');
+          const Indicators = params.filter((p) => indicatorsNames.indexOf(p.seriesName) > -1);
           const buyTag = (Candles || Volume || Buy || Sell).data[14] || params[0].data[8];
 
           if (Volume) {
@@ -218,8 +232,22 @@ export default class CandleChart extends Vue {
           if (Sell && Sell.data[12]) {
             sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[12])));
           }
-          if (Trades) {
-            sectionsHtml.push(toLabelValueHtml('Trades', numberWithCommas(Trades.data[1])));
+          if (TradesList.length) {
+            sectionsHtml.push(
+              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
+                'Trades',
+                '',
+              )}<div style="display: flex; flex-direction: column;">
+              ${TradesList.map((t) => {
+                const trade = t.data[2];
+                const { tradeId } = trade;
+                const value = t.data[1];
+
+                return `<span>${SPACES}#${tradeId} = ${value}</span>`;
+              }).join('')}
+            
+              </div></div>`,
+            );
           }
           if (TradesCloseList.length) {
             sectionsHtml.push(
@@ -232,7 +260,23 @@ export default class CandleChart extends Vue {
                 const { tradeId } = trade;
                 const value = t.data[1];
 
-                return `<span>${SPACES}#${tradeId} = ${numberWithCommas(value)}</span>`;
+                return `<span>${SPACES}#${tradeId} = ${value}</span>`;
+              }).join('')}
+            
+              </div></div>`,
+            );
+          }
+          if (Indicators.length) {
+            sectionsHtml.push(
+              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
+                'Indicators',
+                '',
+              )}<div style="display: flex; flex-direction: column;">
+              ${Indicators.map((o) => {
+                const name = o.seriesName;
+                const value = o.data[6]; // TODO: for all?
+
+                return `<span>${SPACES}${name} = ${value}</span>`;
               }).join('')}
             
               </div></div>`,
@@ -321,26 +365,25 @@ export default class CandleChart extends Vue {
           end: 100,
         },
       ],
-      // visualMap: {
-      //   //  TODO: this would allow to colorize volume bars (if we'd want this)
-      //   //  Needs green / red indicator column in data.
-      //   show: true,
-      //   seriesIndex: 1,
-      //   dimension: 5,
-      //   pieces: [
-      //     {
-      //       max: 500000.0,
-      //       color: downColor,
-      //     },
-      //     {
-      //       min: 500000.0,
-      //       color: upColor,
-      //     },
-      //   ],
-      // },
+      visualMap: {
+        //  TODO: this would allow to colorize volume bars (if we'd want this)
+        //  Needs green / red indicator column in data.
+        show: true,
+        seriesIndex: 1,
+        dimension: 5,
+        pieces: [
+          {
+            max: 500000.0,
+            color: downColor,
+          },
+          {
+            min: 500000.0,
+            color: upColor,
+          },
+        ],
+      },
     };
 
-    console.log('Initialized');
     this.updateChart(true);
   }
 
@@ -382,8 +425,6 @@ export default class CandleChart extends Vue {
       }
     }
 
-    console.log('dataset:', this.dataset);
-
     const options: EChartsOption = {
       dataset: {
         source: this.dataset.data,
@@ -404,7 +445,6 @@ export default class CandleChart extends Vue {
           height: '10%',
         },
       ],
-
       series: [
         {
           name: 'Candles',
@@ -629,9 +669,41 @@ export default class CandleChart extends Vue {
       this.chartOptions.series.push(closeSeries);
     }
 
-    console.log('chartOptions', this.chartOptions);
+    if (this.activeSeries) {
+      const data = [this.activeSeries.value];
+      const { tradeId } = this.activeSeries.value[2];
+      if (this.activeSeries.seriesName === 'Trades') {
+        const found = tradesClose.find((t) => t[2].tradeId === tradeId);
+        data.push(found);
+      } else if (this.activeSeries.seriesName === 'Trades Close') {
+        const found = trades.find((t) => t[2].tradeId === tradeId);
+        data.push(found);
+      }
+
+      if (data.length === 2) {
+        const trades: ScatterSeriesOption | (number | string | object) = {
+          name: 'Connected Trades',
+          type: 'line',
+          lineStyle: {
+            type: 'solid',
+          },
+          data,
+        };
+        this.chartOptions.series.push(trades);
+      }
+    }
 
     this.$refs.candleChart.setOption(this.chartOptions);
+  }
+
+  onClick(params) {
+    if (this.activeSeries) {
+      this.activeSeries = null;
+    } else {
+      this.activeSeries = params;
+    }
+
+    this.updateChart();
   }
 
   /** Return trade entries for charting */
