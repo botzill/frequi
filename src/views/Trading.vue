@@ -58,7 +58,7 @@
       <DraggableContainer header="Open Trades">
         <TradeList
           class="open-trades"
-          :trades="openTrades"
+          :trades="selectedPairOpenTrades"
           title="Open trades"
           :active-trades="true"
           empty-text="Currently no open trades."
@@ -164,6 +164,8 @@ const layoutNs = namespace('layout');
 export default class Trading extends Vue {
   @ftbot.Getter [BotStoreGetters.detailTradeId]!: number;
 
+  @ftbot.Getter [BotStoreGetters.selectedPair]!: string;
+
   @ftbot.Getter [BotStoreGetters.openTrades]!: Trade[];
 
   @ftbot.Getter [BotStoreGetters.closedTrades]!: Trade[];
@@ -183,6 +185,10 @@ export default class Trading extends Vue {
   @layoutNs.Action [LayoutActions.setTradingLayout];
 
   @layoutNs.Getter [LayoutGetters.getLayoutLocked]: boolean;
+
+  get selectedPairOpenTrades() {
+    return this.openTrades.filter((t) => t.pair === this.selectedPair);
+  }
 
   get gridLayout(): GridItemData[] {
     return this.getTradingLayout;

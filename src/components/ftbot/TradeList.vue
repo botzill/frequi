@@ -143,7 +143,7 @@ export default class TradeList extends Vue {
     return this.trades.length;
   }
 
-  perPage = 5000; // this.activeTrades ? 200 : 15;
+  perPage = this.activeTrades ? 200 : 15;
 
   // Added to table-fields for current trades
   openFields: Record<string, string | Function>[] = [{ key: 'actions' }];
