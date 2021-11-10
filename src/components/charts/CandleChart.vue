@@ -98,7 +98,7 @@ export default class CandleChart extends Vue {
 
   chartOptions: EChartsOption = {};
 
-  activeSeries: Record<string, any> | null = {};
+  activeSeries: object | null;
 
   @Watch('dataset')
   datasetChanged() {
