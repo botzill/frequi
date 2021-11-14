@@ -1,13 +1,6 @@
 <template>
   <div class="row flex-grow-1 chart-wrapper">
-    <v-chart
-      v-if="hasData"
-      ref="candleChart"
-      :theme="theme"
-      autoresize
-      manual-update
-      @click="onClick"
-    />
+    <v-chart v-if="hasData" ref="candleChart" :theme="theme" autoresize manual-update />
   </div>
 </template>
 
@@ -22,7 +15,13 @@ import ECharts from 'vue-echarts';
 import { use } from 'echarts/core';
 import { EChartsOption, SeriesOption, ScatterSeriesOption } from 'echarts';
 import { CanvasRenderer } from 'echarts/renderers';
-import { CandlestickChart, LineChart, BarChart, ScatterChart } from 'echarts/charts';
+import {
+  CandlestickChart,
+  LineChart,
+  BarChart,
+  ScatterChart,
+  EffectScatterChart,
+} from 'echarts/charts';
 import {
   AxisPointerComponent,
   CalendarComponent,
@@ -56,6 +55,7 @@ use([
   BarChart,
   LineChart,
   ScatterChart,
+  EffectScatterChart,
   CanvasRenderer,
 ]);
 
@@ -71,8 +71,9 @@ const downBorderColor = '#EF5350';
 
 const buySignalColor = '#00ff26';
 const sellSignalColor = '#faba25';
-const tradeBuyColor = 'cyan';
-const tradeSellColor = 'pink';
+const tradeBuyColor = '#FFFE06';
+const tradeSellColor = '#00FF35';
+const tradeBorderColor = '#212F3D';
 
 @Component({
   components: { 'v-chart': ECharts },
@@ -636,6 +637,9 @@ export default class CandleChart extends Vue {
       delete this.chartOptions.grid[this.chartOptions.grid.length - 1].top;
     }
     const { trades, tradesClose } = this.getTradeEntries();
+    const notClosedTrades = trades.filter(
+      (t) => !tradesClose.find((_t) => _t[2].tradeId === t[2].tradeId),
+    );
 
     const name = 'Trades';
     const nameClose = 'Trades Close';
@@ -647,10 +651,14 @@ export default class CandleChart extends Vue {
       type: 'scatter',
       xAxisIndex: 0,
       yAxisIndex: 0,
+      symbolSize: 15,
       itemStyle: {
+        opacity: 1,
+        borderColor: tradeBorderColor,
+        borderWidth: 1.4,
         color: tradeBuyColor,
       },
-      data: trades,
+      data: trades.filter((t) => !notClosedTrades.find((_t) => _t[2].tradeId === t[2].tradeId)),
     };
     if (Array.isArray(this.chartOptions?.series)) {
       this.chartOptions.series.push(sp);
@@ -663,30 +671,53 @@ export default class CandleChart extends Vue {
       type: 'scatter',
       xAxisIndex: 0,
       yAxisIndex: 0,
+      symbolSize: 15,
       itemStyle: {
+        opacity: 1,
+        borderColor: tradeBorderColor,
+        borderWidth: 1.4,
         color: tradeSellColor,
       },
       data: tradesClose,
     };
+    const notCloseSeries: ScatterSeriesOption | (number | string | object) = {
+      name,
+      type: 'effectScatter',
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      animation: true,
+      colorBy: 'series',
+      symbolSize: 10,
+      rippleEffect: {
+        period: 6,
+        scale: 4,
+      },
+      itemStyle: {
+        opacity: 1,
+        borderColor: tradeBorderColor,
+        borderWidth: 1.4,
+        color: tradeBuyColor,
+      },
+      data: notClosedTrades,
+    };
     if (this.chartOptions.series && Array.isArray(this.chartOptions.series)) {
       this.chartOptions.series.push(closeSeries);
     }
+    this.chartOptions.series.push(notCloseSeries);
 
-    if (this.activeSeries) {
-      const data = [this.activeSeries.value];
-      const { tradeId } = this.activeSeries.value[2];
-      if (this.activeSeries.seriesName === 'Trades') {
-        const found = tradesClose.find((t) => t[2].tradeId === tradeId);
-        data.push(found);
-      } else if (this.activeSeries.seriesName === 'Trades Close') {
-        const found = trades.find((t) => t[2].tradeId === tradeId);
-        data.push(found);
-      }
+    // eslint-disable-next-line no-restricted-syntax
+    for (const trade of trades) {
+      const data = [trade];
+      const { tradeId } = trade[2];
+      const foundTradeClose = tradesClose.find((t) => t[2].tradeId === tradeId);
 
-      if (data.length === 2) {
+      if (foundTradeClose) {
+        data.push(foundTradeClose);
+
         const trades: ScatterSeriesOption | (number | string | object) = {
           name: 'Connected Trades',
           type: 'line',
+          symbol: 'none',
           lineStyle: {
             type: 'solid',
           },
@@ -697,16 +728,6 @@ export default class CandleChart extends Vue {
     }
 
     this.$refs.candleChart.setOption(this.chartOptions);
-  }
-
-  onClick(params) {
-    if (this.activeSeries) {
-      this.activeSeries = null;
-    } else {
-      this.activeSeries = params;
-    }
-
-    this.updateChart();
   }
 
   /** Return trade entries for charting */
