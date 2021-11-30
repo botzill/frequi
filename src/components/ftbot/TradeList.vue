@@ -20,17 +20,50 @@
       @row-selected="onRowSelected"
     >
       <template #cell(actions)="row">
-        <b-button class="btn-xs" size="sm" title="Forcesell" @click="forcesellHandler(row.item)">
-          <ForceSellIcon :size="16" title="Forcesell" />
+        <b-button :id="`btn-actions_${row.index}`" class="btn-xs" size="sm" title="Actions">
+          <ActionIcon :size="16" title="Actions" />
         </b-button>
-        <b-button
-          class="btn-xs ml-1"
-          size="sm"
-          title="Delete trade"
-          @click="removeTradeHandler(row.item)"
-        >
-          <DeleteIcon :size="16" title="Delete trade" />
-        </b-button>
+        <b-popover :target="`btn-actions_${row.index}`" triggers="focus" placement="left">
+          <div class="d-flex flex-column">
+            <b-button
+              v-if="botApiVersion <= 1.1"
+              class="btn-xs text-left"
+              size="sm"
+              title="Forcesell"
+              @click="forcesellHandler(row.item)"
+            >
+              <ForceSellIcon :size="16" title="Forcesell" class="mr-1" />Forcesell
+            </b-button>
+            <b-button
+              v-if="botApiVersion > 1.1"
+              class="btn-xs text-left"
+              size="sm"
+              title="Forcesell limit"
+              @click="forcesellHandler(row.item, 'limit')"
+            >
+              <ForceSellIcon :size="16" title="Forcesell" class="mr-1" />Forcesell limit
+            </b-button>
+            <b-button
+              v-if="botApiVersion > 1.1"
+              class="btn-xs text-left mt-1"
+              size="sm"
+              title="Forcesell market"
+              @click="forcesellHandler(row.item, 'market')"
+            >
+              <ForceSellIcon :size="16" title="Forcesell" class="mr-1" />Forcesell market
+            </b-button>
+
+            <b-button
+              class="btn-xs text-left mt-1"
+              size="sm"
+              title="Delete trade"
+              @click="removeTradeHandler(row.item)"
+            >
+              <DeleteIcon :size="16" title="Delete trade" class="mr-1" />
+              Delete
+            </b-button>
+          </div>
+        </b-popover>
       </template>
       <template #cell(pair)="row">
         <span>
@@ -77,9 +110,10 @@ import { namespace } from 'vuex-class';
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 import { formatPercent, formatPrice } from '@/shared/formatters';
-import { Trade } from '@/types';
+import { MultiDeletePayload, MultiForcesellPayload, Trade } from '@/types';
 import DeleteIcon from 'vue-material-design-icons/Delete.vue';
 import ForceSellIcon from 'vue-material-design-icons/CloseBoxMultiple.vue';
+import ActionIcon from 'vue-material-design-icons/GestureTap.vue';
 import DateTimeTZ from '@/components/general/DateTimeTZ.vue';
 import { BotStoreGetters } from '@/store/modules/ftbot';
 import TradeProfit from './TradeProfit.vue';
@@ -87,7 +121,7 @@ import TradeProfit from './TradeProfit.vue';
 const ftbot = namespace('ftbot');
 
 @Component({
-  components: { DeleteIcon, ForceSellIcon, DateTimeTZ, TradeProfit },
+  components: { DeleteIcon, ForceSellIcon, ActionIcon, DateTimeTZ, TradeProfit },
 })
 export default class TradeList extends Vue {
   $refs!: {
@@ -116,13 +150,15 @@ export default class TradeList extends Vue {
 
   @ftbot.Getter [BotStoreGetters.stakeCurrencyDecimals]!: number;
 
+  @ftbot.Getter [BotStoreGetters.botApiVersion]: number;
+
   @ftbot.Action setDetailTrade;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  @ftbot.Action forcesell!: (tradeid: string) => Promise<string>;
+  @ftbot.Action forceSellMulti!: (payload: MultiForcesellPayload) => Promise<string>;
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  @ftbot.Action deleteTrade!: (tradeid: string) => Promise<string>;
+  @ftbot.Action deleteTradeMulti!: (payload: MultiDeletePayload) => Promise<string>;
 
   currentPage = 1;
 
@@ -190,12 +226,19 @@ export default class TradeList extends Vue {
     return formatPrice(price, this.stakeCurrencyDecimals);
   }
 
-  forcesellHandler(item: Trade) {
+  forcesellHandler(item: Trade, ordertype: string | undefined = undefined) {
     this.$bvModal
       .msgBoxConfirm(`Really forcesell trade ${item.trade_id} (Pair ${item.pair})?`)
       .then((value: boolean) => {
         if (value) {
-          this.forcesell(String(item.trade_id))
+          const payload: MultiForcesellPayload = {
+            tradeid: String(item.trade_id),
+            botId: item.botId,
+          };
+          if (ordertype) {
+            payload.ordertype = ordertype;
+          }
+          this.forceSellMulti(payload)
             .then((xxx) => console.log(xxx))
             .catch((error) => console.log(error.response));
         }
@@ -218,7 +261,11 @@ export default class TradeList extends Vue {
       .msgBoxConfirm(`Really delete trade ${item.trade_id} (Pair ${item.pair})?`)
       .then((value: boolean) => {
         if (value) {
-          this.deleteTrade(item.trade_id).catch((error) => console.log(error.response));
+          const payload: MultiDeletePayload = {
+            tradeid: String(item.trade_id),
+            botId: item.botId,
+          };
+          this.deleteTradeMulti(payload).catch((error) => console.log(error.response));
         }
       });
   }
