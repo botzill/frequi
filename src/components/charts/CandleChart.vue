@@ -216,7 +216,9 @@ export default class CandleChart extends Vue {
           const TradesList = params.filter((p) => p.seriesName === 'Trades');
           const TradesCloseList = params.filter((p) => p.seriesName === 'Trades Close');
           const Indicators = params.filter((p) => indicatorsNames.indexOf(p.seriesName) > -1);
-          const buyTag = (Candles || Volume || Buy || Sell).data[14] || params[0].data[8];
+          const TagRef = Candles || Volume || Buy || Sell;
+          const buyTag =
+            TagRef.data[TagRef.data.length - 3] || params[0].data[params[0].data.length - 3];
 
           if (Volume) {
             sectionsHtml.push(toLabelValueHtml('Volume', numberWithCommas(Volume.data[5])));
@@ -234,12 +236,12 @@ export default class CandleChart extends Vue {
               </div></div>`,
             );
           }
-          if (Buy && Buy.data[11]) {
-            sectionsHtml.push(toLabelValueHtml('Buy', numberWithCommas(Buy.data[11])));
+          if (Buy && Buy.data[Buy.data.length - 1]) {
+            sectionsHtml.push(toLabelValueHtml('Buy', Buy.data[Buy.data.length - 1]));
           }
-          if (Sell && Sell.data[12]) {
-            sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[12])));
-          }
+          // if (Sell && Sell.data[12]) {
+          //   sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[12])));
+          // }
           if (TradesList.length) {
             sectionsHtml.push(
               `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
@@ -274,7 +276,6 @@ export default class CandleChart extends Vue {
               </div></div>`,
             );
           }
-          console.log('Indicators:', Indicators);
           if (Indicators.length) {
             sectionsHtml.push(
               `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
