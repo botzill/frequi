@@ -287,7 +287,7 @@ export default function createBotStore(store) {
         // Set interval for refresh
         const refreshInterval = window.setInterval(() => {
           dispatch('allRefreshFrequent');
-        }, 5000);
+        }, 60000);
         commit('setRefreshInterval', refreshInterval);
       }
       if (!state.refreshIntervalSlow) {
