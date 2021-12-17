@@ -162,6 +162,8 @@ export default class CandleChart extends Vue {
       ]),
     );
 
+    const datasetColumns = this.datasetColumns();
+
     this.chartOptions = {
       title: [
         {
@@ -204,6 +206,17 @@ export default class CandleChart extends Vue {
         formatter(params) {
           function toLabelValueHtml(label, value) {
             return `<div><span style="font-weight: 600;">${label}: </span><span>${value}</span></div>`;
+          }
+
+          function datasetToObject(data) {
+            const columns = datasetColumns;
+            const results = {};
+
+            for (let i = 0; i < columns.length; i += 1) {
+              results[columns[i]] = data[i];
+            }
+
+            return results;
           }
 
           const SPACES = '&#160;&#160;';
@@ -255,7 +268,7 @@ export default class CandleChart extends Vue {
 
                 return `<span>${SPACES}#${tradeId} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
@@ -272,7 +285,7 @@ export default class CandleChart extends Vue {
 
                 return `<span>${SPACES}#${tradeId} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
@@ -283,12 +296,14 @@ export default class CandleChart extends Vue {
                 '',
               )}<div style="display: flex; flex-direction: column;">
               ${Indicators.map((indicator, index) => {
+                const indicatorObj = datasetToObject(indicator.data);
                 const name = indicator.seriesName;
-                const value = indicator.data[6 + index];
+                // const value = indicator.data[6 + index];
+                const value = indicatorObj[name];
 
                 return `<span>${SPACES}${name} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
