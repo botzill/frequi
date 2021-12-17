@@ -135,6 +135,17 @@ export default class CandleChart extends Vue {
     return this.dataset ? this.dataset.columns : [];
   }
 
+  get datasetToObject(data){
+    const columns = this.datasetColumns()
+    const results = {}
+
+    for (let i = 0; i < columns.length; i++) {
+      results[columns[i]] = data[i];
+    }
+
+    return results
+  }
+
   get hasData() {
     return this.dataset !== null && typeof this.dataset === 'object';
   }
@@ -255,7 +266,7 @@ export default class CandleChart extends Vue {
 
                 return `<span>${SPACES}#${tradeId} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
@@ -272,7 +283,7 @@ export default class CandleChart extends Vue {
 
                 return `<span>${SPACES}#${tradeId} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
@@ -283,12 +294,14 @@ export default class CandleChart extends Vue {
                 '',
               )}<div style="display: flex; flex-direction: column;">
               ${Indicators.map((indicator, index) => {
+                const indicatorObj = this.datasetToObject(indicator.data)
                 const name = indicator.seriesName;
-                const value = indicator.data[6 + index];
+                // const value = indicator.data[6 + index];
+                const value = indicatorObj[name];
 
                 return `<span>${SPACES}${name} = ${value}</span>`;
               }).join('')}
-            
+
               </div></div>`,
             );
           }
