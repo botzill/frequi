@@ -12,6 +12,12 @@
         <b-dropdown-item-button @click="setFilterType('open_orders')"
           >Only with open orders</b-dropdown-item-button
         >
+        <b-dropdown-item-button @click="setFilterType('with_supertrend')"
+          >With Supertrend</b-dropdown-item-button
+        >
+        <b-dropdown-item-button @click="setFilterType('without_supertrend')"
+          >Without Supertrend</b-dropdown-item-button
+        >
       </b-dropdown>
       <b-dropdown size="sm" text="Sort" class="sort m-2">
         <b-dropdown-item-button @click="setSortBy('name')">
@@ -23,6 +29,9 @@
         /></b-dropdown-item-button>
         <b-dropdown-item-button @click="setSortBy('timestamp')"
           >By Open Time <span v-if="sortBy === 'timestamp'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
+        <b-dropdown-item-button @click="setSortBy('supertrend')"
+          >By Supertrend <span v-if="sortBy === 'supertrend'" v-html="sortSymbol"
         /></b-dropdown-item-button>
       </b-dropdown>
     </div>
@@ -72,6 +81,7 @@ interface CombinedPairList {
   profit: number;
   profitAbs: number;
   openTimestamp: number;
+  superTrendDirection: number;
 }
 
 const sortAscSymbol = '&#8595;';
@@ -130,6 +140,8 @@ export default class PairSummary extends Vue {
         let profitString = '';
         let profit = 0;
         let profitAbs = 0;
+        let superTrendDirection = 0;
+
         trades.forEach((trade) => {
           profit += trade.profit_ratio;
           profitAbs += trade.profit_abs;
@@ -141,7 +153,9 @@ export default class PairSummary extends Vue {
         }
         if (trade) {
           profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
+          superTrendDirection = trade.last_candle.SUPERTd || 0;
         }
+
         comb.push({
           id,
           pair,
@@ -152,6 +166,7 @@ export default class PairSummary extends Vue {
           profit,
           profitAbs,
           openTimestamp,
+          superTrendDirection,
         });
       });
     } else if (this.filterType === 'no_orders') {
@@ -166,6 +181,7 @@ export default class PairSummary extends Vue {
         const profitString = '';
         const profit = 0;
         const profitAbs = 0;
+        const superTrendDirection = 0;
 
         // Sort to have longer timeframe in front
         allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
@@ -184,10 +200,11 @@ export default class PairSummary extends Vue {
             profit,
             profitAbs,
             openTimestamp,
+            superTrendDirection,
           });
         }
       });
-    } else if (this.filterType === 'open_orders') {
+    } else if (['open_orders', 'with_supertrend', 'without_supertrend'].includes(this.filterType)) {
       this.trades.forEach((trade) => {
         let profitString = '';
         const {
@@ -197,9 +214,13 @@ export default class PairSummary extends Vue {
           profit_abs: profitAbs,
           open_timestamp: openTimestamp,
         } = trade;
+
+        const superTrendDirection = trade.last_candle.SUPERTd || 0;
+
         const allLocks = this.currentLocks.filter((el) => el.pair === pair);
         let lockReason = '';
         let locks;
+        let addItem = false;
 
         // Sort to have longer timeframe in front
         allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
@@ -208,17 +229,29 @@ export default class PairSummary extends Vue {
           lockReason = `${timestampms(locks.lock_end_timestamp)} - ${locks.reason}`;
         }
         profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
-        comb.push({
-          id,
-          pair,
-          locks,
-          lockReason,
-          trade,
-          profitString,
-          profit,
-          profitAbs,
-          openTimestamp,
-        });
+
+        if (this.filterType === 'open_orders') {
+          addItem = true;
+        } else if (this.filterType === 'with_supertrend' && superTrendDirection > 1) {
+          addItem = true;
+        } else if (this.filterType === 'without_supertrend' && superTrendDirection <= 1) {
+          addItem = true;
+        }
+
+        if (addItem) {
+          comb.push({
+            id,
+            pair,
+            locks,
+            lockReason,
+            trade,
+            profitString,
+            profit,
+            profitAbs,
+            openTimestamp,
+            superTrendDirection,
+          });
+        }
       });
     }
     if (this.sortBy === 'name') {
@@ -238,6 +271,13 @@ export default class PairSummary extends Vue {
     } else if (this.sortBy === 'timestamp') {
       comb.sort((a, b) => {
         if (a.openTimestamp > b.openTimestamp) {
+          return this.sortMethod === 'asc' ? 1 : -1;
+        }
+        return this.sortMethod === 'asc' ? -1 : 1;
+      });
+    } else if (this.sortBy === 'supertrend') {
+      comb.sort((a, b) => {
+        if (a.superTrendDirection > b.superTrendDirection) {
           return this.sortMethod === 'asc' ? 1 : -1;
         }
         return this.sortMethod === 'asc' ? -1 : 1;
