@@ -24,6 +24,9 @@
         <b-dropdown-item-button @click="setSortBy('timestamp')"
           >By Open Time <span v-if="sortBy === 'timestamp'" v-html="sortSymbol"
         /></b-dropdown-item-button>
+        <b-dropdown-item-button @click="setSortBy('supertrend')"
+          >By Supertrend <span v-if="sortBy === 'supertrend'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
       </b-dropdown>
     </div>
 
@@ -72,6 +75,7 @@ interface CombinedPairList {
   profit: number;
   profitAbs: number;
   openTimestamp: number;
+  superTrendDirection: number;
 }
 
 const sortAscSymbol = '&#8595;';
@@ -130,6 +134,8 @@ export default class PairSummary extends Vue {
         let profitString = '';
         let profit = 0;
         let profitAbs = 0;
+        let superTrendDirection = 0;
+
         trades.forEach((trade) => {
           profit += trade.profit_ratio;
           profitAbs += trade.profit_abs;
@@ -141,7 +147,9 @@ export default class PairSummary extends Vue {
         }
         if (trade) {
           profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
+          superTrendDirection = trade.last_candle.SUPERTd || 0;
         }
+
         comb.push({
           id,
           pair,
@@ -152,6 +160,7 @@ export default class PairSummary extends Vue {
           profit,
           profitAbs,
           openTimestamp,
+          superTrendDirection,
         });
       });
     } else if (this.filterType === 'no_orders') {
@@ -238,6 +247,13 @@ export default class PairSummary extends Vue {
     } else if (this.sortBy === 'timestamp') {
       comb.sort((a, b) => {
         if (a.openTimestamp > b.openTimestamp) {
+          return this.sortMethod === 'asc' ? 1 : -1;
+        }
+        return this.sortMethod === 'asc' ? -1 : 1;
+      });
+    } else if (this.sortBy === 'supertrend') {
+      comb.sort((a, b) => {
+        if (a.superTrendDirection > b.superTrendDirection) {
           return this.sortMethod === 'asc' ? 1 : -1;
         }
         return this.sortMethod === 'asc' ? -1 : 1;

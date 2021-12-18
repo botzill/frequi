@@ -1,3 +1,7 @@
+export interface LastCandle {
+  SUPERTd: number;
+}
+
 export interface Trade {
   /**
    * corresponds to the UI (ftbot.1) - does NOT relate to the backend!
@@ -64,6 +68,7 @@ export interface Trade {
   stoploss_current_dist_ratio?: number;
   stoploss_current_dist_pct?: number;
   open_order_id?: string;
+  last_candle: LastCandle;
 }
 
 export interface ClosedTrade extends Trade {
