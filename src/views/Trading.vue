@@ -37,7 +37,6 @@
           <b-tab title="Daily Stats" lazy>
             <DailyStats />
           </b-tab>
-
           <b-tab title="Pairlist" lazy>
             <FTBotAPIPairList />
           </b-tab>
@@ -76,7 +75,7 @@
       <DraggableContainer header="Closed Trades">
         <TradeList
           class="trade-history"
-          :trades="closedTrades"
+          :trades="selectedPairClosedTrades"
           title="Trade history"
           empty-text="No closed trades so far."
         />
@@ -188,6 +187,10 @@ export default class Trading extends Vue {
 
   get selectedPairOpenTrades() {
     return this.openTrades.filter((t) => t.pair === this.selectedPair);
+  }
+
+  get selectedPairClosedTrades() {
+    return this.closedTrades.filter((t) => t.pair === this.selectedPair);
   }
 
   get gridLayout(): GridItemData[] {

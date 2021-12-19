@@ -15,6 +15,9 @@
           <router-link v-if="!canRunBacktest" class="nav-link navbar-nav" to="/trade"
             >Trade</router-link
           >
+          <router-link v-if="!canRunBacktest" class="nav-link navbar-nav" to="/closed-trades"
+            >Closed Trades</router-link
+          >
           <router-link v-if="!canRunBacktest" class="nav-link navbar-nav" to="/dashboard"
             >Dashboard</router-link
           >

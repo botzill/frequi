@@ -21,6 +21,11 @@ const routes: Array<RouteConfig> = [
     component: () => import(/* webpackChunkName: "trade" */ '@/views/Trading.vue'),
   },
   {
+    path: '/closed-trades',
+    name: 'Freqtrade Closed Trades',
+    component: () => import(/* webpackChunkName: "trade" */ '@/views/ClosedTrades.vue'),
+  },
+  {
     path: '/graph',
     name: 'Freqtrade Graph',
     component: () => import(/* webpackChunkName: "graph" */ '@/views/Graphs.vue'),
