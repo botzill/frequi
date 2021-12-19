@@ -1,5 +1,6 @@
 export interface LastCandle {
   SUPERTd: number;
+  volume: number;
 }
 
 export interface Trade {

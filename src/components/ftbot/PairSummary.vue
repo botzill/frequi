@@ -27,6 +27,9 @@
         <b-dropdown-item-button @click="setSortBy('profit')"
           >By Profit <span v-if="sortBy === 'profit'" v-html="sortSymbol"
         /></b-dropdown-item-button>
+        <b-dropdown-item-button @click="setSortBy('volume')"
+          >By Volume <span v-if="sortBy === 'volume'" v-html="sortSymbol"
+        /></b-dropdown-item-button>
         <b-dropdown-item-button @click="setSortBy('timestamp')"
           >By Open Time <span v-if="sortBy === 'timestamp'" v-html="sortSymbol"
         /></b-dropdown-item-button>
@@ -82,6 +85,7 @@ interface CombinedPairList {
   profitAbs: number;
   openTimestamp: number;
   superTrendDirection: number;
+  volume: null | number;
 }
 
 const sortAscSymbol = '&#8595;';
@@ -148,12 +152,14 @@ export default class PairSummary extends Vue {
         });
         const tradeCount = trades.length;
         const trade = tradeCount ? trades[0] : undefined;
+        const volume = trades.length ? trades[trades.length - 1].last_candle.volume : null;
         if (trades.length > 0) {
           profitString = `Current profit: ${formatPercent(profit)}`;
         }
         if (trade) {
           profitString += `\nOpen since: ${timestampms(trade.open_timestamp)}`;
           superTrendDirection = trade.last_candle.SUPERTd || 0;
+          // TODO: find a way to get volume from all pairs
         }
 
         comb.push({
@@ -167,6 +173,7 @@ export default class PairSummary extends Vue {
           profitAbs,
           openTimestamp,
           superTrendDirection,
+          volume,
         });
       });
     } else if (this.filterType === 'no_orders') {
@@ -182,6 +189,7 @@ export default class PairSummary extends Vue {
         const profit = 0;
         const profitAbs = 0;
         const superTrendDirection = 0;
+        const volume = trades.length ? trades[trades.length - 1].last_candle.volume : null;
 
         // Sort to have longer timeframe in front
         allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
@@ -201,6 +209,7 @@ export default class PairSummary extends Vue {
             profitAbs,
             openTimestamp,
             superTrendDirection,
+            volume,
           });
         }
       });
@@ -216,7 +225,7 @@ export default class PairSummary extends Vue {
         } = trade;
 
         const superTrendDirection = trade.last_candle.SUPERTd || 0;
-
+        const { volume } = trade.last_candle;
         const allLocks = this.currentLocks.filter((el) => el.pair === pair);
         let lockReason = '';
         let locks;
@@ -250,10 +259,12 @@ export default class PairSummary extends Vue {
             profitAbs,
             openTimestamp,
             superTrendDirection,
+            volume,
           });
         }
       });
     }
+    console.log('comb:', comb);
     if (this.sortBy === 'name') {
       comb.sort((a, b) => {
         if (a.pair > b.pair) {
@@ -262,6 +273,13 @@ export default class PairSummary extends Vue {
         return this.sortMethod === 'asc' ? -1 : 1;
       });
     } else if (this.sortBy === 'profit') {
+      comb.sort((a, b) => {
+        if (a.profit > b.profit) {
+          return this.sortMethod === 'asc' ? 1 : -1;
+        }
+        return this.sortMethod === 'asc' ? -1 : 1;
+      });
+    } else if (this.sortBy === 'volume') {
       comb.sort((a, b) => {
         if (a.profit > b.profit) {
           return this.sortMethod === 'asc' ? 1 : -1;
