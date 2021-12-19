@@ -65,7 +65,6 @@ const layoutNs = namespace('layout');
     DraggableContainer,
     GridItem,
     GridLayout,
-    Performance,
     TradeDetail,
     TradeList,
   },
