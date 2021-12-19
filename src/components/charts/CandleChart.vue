@@ -71,7 +71,7 @@ const upBorderColor = '#26A69A';
 const downColor = '#EF5350';
 const downBorderColor = '#EF5350';
 
-const buySignalColor = '#00ff26';
+const buySignalColor = '#00FF00';
 const shortEntrySignalColor = '#00ff26';
 const sellSignalColor = '#faba25';
 const shortexitSignalColor = '#faba25';
@@ -538,7 +538,7 @@ export default class CandleChart extends Vue {
           itemStyle: {
             opacity: 1,
             borderColor: tradeBorderColor,
-            borderWidth: 1.4,
+            borderWidth: 0.5,
             color: buySignalColor,
           },
           encode: {
