@@ -2,10 +2,14 @@
   <div class="container mt-3">
     <b-card header="FreqUI Settings">
       <div class="text-left">
+        <p>UI Version: {{ getUiVersion }}</p>
         <b-form-group
           description="Lock dynamic layouts, so they cannot move anymore. Can also be set from the navbar at the top."
         >
           <b-checkbox v-model="layoutLockedLocal">Lock layout</b-checkbox>
+        </b-form-group>
+        <b-form-group description="Reset dynamic layouts to how they were.">
+          <b-button size="sm" @click="resetDynamicLayout">Reset layout</b-button>
         </b-form-group>
         <b-form-group
           label="Show open trades in header"
@@ -31,19 +35,29 @@
 </template>
 
 <script lang="ts">
+import { AlertActions } from '@/store/modules/alerts';
 import { LayoutActions, LayoutGetters } from '@/store/modules/layout';
 import { OpenTradeVizOptions, SettingsActions, SettingsGetters } from '@/store/modules/settings';
 import { Component, Vue } from 'vue-property-decorator';
-import { namespace } from 'vuex-class';
+import { namespace, Getter } from 'vuex-class';
 
 const layoutNs = namespace('layout');
 const uiSettingsNs = namespace('uiSettings');
+const alerts = namespace('alerts');
 
 @Component({})
-export default class Template extends Vue {
+export default class Settings extends Vue {
+  @Getter getUiVersion!: string;
+
   @layoutNs.Getter [LayoutGetters.getLayoutLocked]: boolean;
 
   @layoutNs.Action [LayoutActions.setLayoutLocked];
+
+  @layoutNs.Action [LayoutActions.resetTradingLayout];
+
+  @layoutNs.Action [LayoutActions.resetDashboardLayout];
+
+  @alerts.Action [AlertActions.addAlert];
 
   @uiSettingsNs.Getter [SettingsGetters.openTradesInTitle]: string;
 
@@ -96,6 +110,12 @@ export default class Template extends Vue {
 
   set backgroundSyncLocal(value: boolean) {
     this.setBackgroundSync(value);
+  }
+
+  resetDynamicLayout(): void {
+    this.resetTradingLayout();
+    this.resetDashboardLayout();
+    this.addAlert({ message: 'Layouts have been reset.' });
   }
 }
 </script>
