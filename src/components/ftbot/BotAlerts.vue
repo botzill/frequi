@@ -18,12 +18,14 @@
 import { Component, Vue } from 'vue-property-decorator';
 import { namespace } from 'vuex-class';
 import { AlertActions } from '@/store/modules/alerts';
+import StoreModules from '@/store/storeSubModules';
+import { AlertType } from '@/types/alertTypes';
 
-const alerts = namespace('alerts');
+const alerts = namespace(StoreModules.alerts);
 
 @Component({})
 export default class BotAlerts extends Vue {
-  @alerts.State activeMessages;
+  @alerts.State activeMessages!: AlertType[];
 
   @alerts.Action [AlertActions.removeAlert];
 

@@ -68,8 +68,9 @@ import SortAscendingIcon from 'vue-material-design-icons/SortAscending.vue';
 import SortDescendingIcon from 'vue-material-design-icons/SortDescending.vue';
 import TradeProfit from '@/components/ftbot/TradeProfit.vue';
 import ProfitPill from '@/components/general/ProfitPill.vue';
+import StoreModules from '@/store/storeSubModules';
 
-const ftbot = namespace('ftbot');
+const ftbot = namespace(StoreModules.ftbot);
 
 interface CombinedPairList {
   id: number;
