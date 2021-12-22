@@ -14,6 +14,7 @@
         <ShowIcon v-else :size="16" />
       </b-form-checkbox>
     </div>
+    <BalanceChart :balance="balance" />
     <div>
       <p v-if="balance.note">
         <strong>{{ balance.note }}</strong>
@@ -38,12 +39,14 @@ import { namespace } from 'vuex-class';
 import { BalanceInterface } from '@/types';
 import HideIcon from 'vue-material-design-icons/EyeOff.vue';
 import ShowIcon from 'vue-material-design-icons/Eye.vue';
+import BalanceChart from '@/components/charts/BalanceChart.vue';
 import { BotStoreGetters } from '@/store/modules/ftbot';
+import StoreModules from '@/store/storeSubModules';
 
-const ftbot = namespace('ftbot');
+const ftbot = namespace(StoreModules.ftbot);
 
 @Component({
-  components: { HideIcon, ShowIcon },
+  components: { HideIcon, ShowIcon, BalanceChart },
 })
 export default class Balance extends Vue {
   @ftbot.Action getBalance;

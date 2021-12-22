@@ -33,9 +33,6 @@
         <b-dropdown-item-button @click="setSortBy('timestamp')"
           >By Open Time <span v-if="sortBy === 'timestamp'" v-html="sortSymbol"
         /></b-dropdown-item-button>
-        <b-dropdown-item-button @click="setSortBy('supertrend')"
-          >By Supertrend <span v-if="sortBy === 'supertrend'" v-html="sortSymbol"
-        /></b-dropdown-item-button>
       </b-dropdown>
     </div>
 
@@ -71,8 +68,9 @@ import SortAscendingIcon from 'vue-material-design-icons/SortAscending.vue';
 import SortDescendingIcon from 'vue-material-design-icons/SortDescending.vue';
 import TradeProfit from '@/components/ftbot/TradeProfit.vue';
 import ProfitPill from '@/components/general/ProfitPill.vue';
+import StoreModules from '@/store/storeSubModules';
 
-const ftbot = namespace('ftbot');
+const ftbot = namespace(StoreModules.ftbot);
 
 interface CombinedPairList {
   id: number;
@@ -288,13 +286,6 @@ export default class PairSummary extends Vue {
     } else if (this.sortBy === 'timestamp') {
       comb.sort((a, b) => {
         if (a.openTimestamp > b.openTimestamp) {
-          return this.sortMethod === 'asc' ? 1 : -1;
-        }
-        return this.sortMethod === 'asc' ? -1 : 1;
-      });
-    } else if (this.sortBy === 'supertrend') {
-      comb.sort((a, b) => {
-        if (a.superTrendDirection > b.superTrendDirection) {
           return this.sortMethod === 'asc' ? 1 : -1;
         }
         return this.sortMethod === 'asc' ? -1 : 1;

@@ -1,22 +1,23 @@
 <template>
   <div id="app" class="d-flex flex-column vh-100">
-    <Header />
+    <NavBar />
     <Body class="flex-fill overflow-auto" />
   </div>
 </template>
 
 <script lang="ts">
 import { Component, Vue } from 'vue-property-decorator';
-import Header from '@/components/layout/Header.vue';
+import NavBar from '@/components/layout/NavBar.vue';
 import Body from '@/components/layout/Body.vue';
 import { namespace } from 'vuex-class';
 import { SettingsGetters } from './store/modules/settings';
 import { setTimezone } from './shared/formatters';
+import StoreModules from './store/storeSubModules';
 
-const uiSettingsNs = namespace('uiSettings');
+const uiSettingsNs = namespace(StoreModules.uiSettings);
 
 @Component({
-  components: { Header, Body },
+  components: { NavBar, Body },
 })
 export default class App extends Vue {
   @uiSettingsNs.Getter [SettingsGetters.timezone]: string;
