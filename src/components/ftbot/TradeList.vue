@@ -13,7 +13,7 @@
       :current-page="currentPage"
       primary-key="botTradeId"
       selectable
-      select-mode="single"
+      select-mode="multi"
       :filter="filterText"
       @row-contextmenu="handleContextMenuEvent"
       @row-clicked="onRowClicked"

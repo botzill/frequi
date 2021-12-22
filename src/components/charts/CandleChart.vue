@@ -1,6 +1,13 @@
 <template>
   <div class="row flex-grow-1 chart-wrapper">
-    <v-chart v-if="hasData" ref="candleChart" :theme="theme" autoresize manual-update />
+    <v-chart
+      v-if="hasData"
+      ref="candleChart"
+      :theme="theme"
+      autoresize
+      manual-update
+      @click="onChartClick"
+    />
   </div>
 </template>
 
@@ -78,6 +85,8 @@ const shortexitSignalColor = '#faba25';
 const tradeBuyColor = '#FFFE06';
 const tradeSellColor = '#00FF35';
 const tradeBorderColor = '#212F3D';
+const tradeCloseFromMergeColor = '#6AA84F';
+const mergeTradeColor = '#6FA8DC';
 
 @Component({
   components: { 'v-chart': ECharts },
@@ -107,6 +116,8 @@ export default class CandleChart extends Vue {
 
   @Watch('dataset')
   datasetChanged() {
+    this.activeTrade = null;
+    this.activeSeries = null;
     this.updateChart();
   }
 
@@ -225,12 +236,33 @@ export default class CandleChart extends Vue {
           const Volume = params.find((p) => p.seriesName === 'Volume');
           const Buy = params.find((p) => p.seriesName === 'Buy');
           const Sell = params.find((p) => p.seriesName === 'Sell');
-          const TradesList = params.filter((p) => p.seriesName === 'Trades');
-          const TradesCloseList = params.filter((p) => p.seriesName === 'Trades Close');
           const Indicators = params.filter((p) => indicatorsNames.indexOf(p.seriesName) > -1);
           const TagRef = Candles || Volume || Buy || Sell;
-          const buyTag =
-            TagRef.data[TagRef.data.length - 3] || params[0].data[params[0].data.length - 3];
+          const buyTag = TagRef
+            ? TagRef.data[TagRef.data.length - 3] || params[0].data[params[0].data.length - 3]
+            : '';
+          const renderTrades = (name) => {
+            const list = params.filter((p) => p.seriesName === name);
+            if (list.length) {
+              sectionsHtml.push(
+                `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
+                  name,
+                  '',
+                )}<div style="display: flex; flex-direction: column;">
+              ${list
+                .map((t) => {
+                  const trade = t.data[2];
+                  const { tradeId } = trade;
+                  const value = t.data[1];
+
+                  return `<span>${SPACES}#${tradeId} = ${value}</span>`;
+                })
+                .join('')}
+
+              </div></div>`,
+              );
+            }
+          };
 
           if (Volume) {
             sectionsHtml.push(toLabelValueHtml('Volume', numberWithCommas(Volume.data[5])));
@@ -254,40 +286,13 @@ export default class CandleChart extends Vue {
           // if (Sell && Sell.data[12]) {
           //   sectionsHtml.push(toLabelValueHtml('Sell', numberWithCommas(Sell.data[12])));
           // }
-          if (TradesList.length) {
-            sectionsHtml.push(
-              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
-                'Trades',
-                '',
-              )}<div style="display: flex; flex-direction: column;">
-              ${TradesList.map((t) => {
-                const trade = t.data[2];
-                const { tradeId } = trade;
-                const value = t.data[1];
 
-                return `<span>${SPACES}#${tradeId} = ${value}</span>`;
-              }).join('')}
+          renderTrades('Trades');
+          renderTrades('Trades Close');
+          renderTrades('Trades not Close');
+          renderTrades('Trades Close from Merge');
+          renderTrades('Trades Merge');
 
-              </div></div>`,
-            );
-          }
-          if (TradesCloseList.length) {
-            sectionsHtml.push(
-              `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
-                'Trades Close',
-                '',
-              )}<div style="display: flex; flex-direction: column;">
-              ${TradesCloseList.map((t) => {
-                const trade = t.data[2];
-                const { tradeId } = trade;
-                const value = t.data[1];
-
-                return `<span>${SPACES}#${tradeId} = ${value}</span>`;
-              }).join('')}
-
-              </div></div>`,
-            );
-          }
           if (Indicators.length) {
             sectionsHtml.push(
               `<div style="display: flex; flex-direction: column;">${toLabelValueHtml(
@@ -452,7 +457,6 @@ export default class CandleChart extends Vue {
     const colShortExitData = this.dataset.columns.findIndex(
       (el) => el === '_exit_short_signal_close',
     );
-    console.log('short_exit', colShortExitData);
 
     const subplotCount =
       'subplots' in this.plotConfig ? Object.keys(this.plotConfig.subplots).length + 1 : 1;
@@ -731,18 +735,56 @@ export default class CandleChart extends Vue {
       this.chartOptions.grid[this.chartOptions.grid.length - 1].bottom = '50px';
       delete this.chartOptions.grid[this.chartOptions.grid.length - 1].top;
     }
-    const { trades, tradesClose } = this.getTradeEntries();
+    let { trades, tradesClose } = this.getTradeEntries();
+
+    if (this.activeTrade) {
+      const chainTrades = [];
+      const chainTradesClose = [];
+      const linesBetweenTrades = [];
+      const findAllParentTrades = (id) => {
+        const trade = [...trades, ...tradesClose].find((t) => t[2].tradeId === id);
+        if (trade[2].mergedFromTrades) {
+          // eslint-disable-next-line
+          for (const id of trade[2].mergedFromTrades) {
+            const notClosedTrade = trades.find((t) => t[2].tradeId === id);
+            const closedTrade = tradesClose.find((t) => t[2].tradeId === id);
+            chainTrades.push(notClosedTrade);
+            chainTradesClose.push(closedTrade);
+            linesBetweenTrades.push(trade, notClosedTrade, closedTrade);
+            findAllParentTrades(id);
+          }
+        }
+      };
+      findAllParentTrades(this.activeTrade.trade_id);
+      const connectionsTradesSeries: ScatterSeriesOption | (number | string | object) = {
+        name: 'Lines',
+        type: 'line',
+        symbol: 'none',
+        // symbol: 'arrow',
+        // symbolSize: 8,
+        // symbolOffset: [0, '+100%'],
+        lineStyle: {
+          color: '#FFFF00',
+          type: 'solid',
+          width: 1,
+        },
+        itemStyle: {
+          borderColor: tradeBorderColor,
+          borderWidth: 0.2,
+          color: 'white',
+        },
+        data: linesBetweenTrades,
+      };
+      this.chartOptions.series.push(connectionsTradesSeries);
+      trades = chainTrades;
+      tradesClose = chainTradesClose;
+    }
+
     const notClosedTrades = trades.filter(
       (t) => !tradesClose.find((_t) => _t[2].tradeId === t[2].tradeId),
     );
-
-    const name = 'Trades';
-    const nameClose = 'Trades Close';
-    if (!Array.isArray(this.chartOptions.legend) && this.chartOptions.legend?.data) {
-      this.chartOptions.legend.data.push(name);
-    }
-    const sp: ScatterSeriesOption | (number | string | object) = {
-      name,
+    const tradeSeries: ScatterSeriesOption | (number | string | object) = {
+      name: 'Trades',
       type: 'scatter',
       xAxisIndex: 0,
       yAxisIndex: 0,
@@ -753,16 +795,12 @@ export default class CandleChart extends Vue {
         borderWidth: 1.4,
         color: tradeBuyColor,
       },
-      data: trades.filter((t) => !notClosedTrades.find((_t) => _t[2].tradeId === t[2].tradeId)),
+      data: trades
+        .filter((t) => !notClosedTrades.find((_t) => _t[2].tradeId === t[2].tradeId))
+        .filter((t) => !t[2].mergedToTrade),
     };
-    if (Array.isArray(this.chartOptions?.series)) {
-      this.chartOptions.series.push(sp);
-    }
-    if (!Array.isArray(this.chartOptions.legend) && this.chartOptions.legend?.data) {
-      this.chartOptions.legend.data.push(nameClose);
-    }
-    const closeSeries: ScatterSeriesOption | (number | string | object) = {
-      name: nameClose,
+    const closeSeriesWithoutMerge: ScatterSeriesOption | (number | string | object) = {
+      name: 'Trades Close',
       type: 'scatter',
       xAxisIndex: 0,
       yAxisIndex: 0,
@@ -773,10 +811,38 @@ export default class CandleChart extends Vue {
         borderWidth: 1.4,
         color: tradeSellColor,
       },
-      data: tradesClose,
+      data: tradesClose.filter((t) => !t[2].mergedFromTrades),
+    };
+    const closeSeriesFromMerge: ScatterSeriesOption | (number | string | object) = {
+      name: 'Trades Close from Merge',
+      type: 'scatter',
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      symbolSize: 15,
+      itemStyle: {
+        opacity: 1,
+        borderColor: tradeBorderColor,
+        borderWidth: 1.4,
+        color: tradeCloseFromMergeColor,
+      },
+      data: tradesClose.filter((t) => !!t[2].mergedFromTrades),
+    };
+    const mergedToSeries: ScatterSeriesOption | (number | string | object) = {
+      name: 'Trades Merge',
+      type: 'scatter',
+      xAxisIndex: 0,
+      yAxisIndex: 0,
+      symbolSize: 15,
+      itemStyle: {
+        opacity: 1,
+        borderColor: tradeBorderColor,
+        borderWidth: 1.4,
+        color: mergeTradeColor,
+      },
+      data: trades.filter((t) => !!t[2].mergedToTrade),
     };
     const notCloseSeries: ScatterSeriesOption | (number | string | object) = {
-      name,
+      name: 'Trades not Close',
       type: 'effectScatter',
       xAxisIndex: 0,
       yAxisIndex: 0,
@@ -795,33 +861,64 @@ export default class CandleChart extends Vue {
       },
       data: notClosedTrades,
     };
-    if (this.chartOptions.series && Array.isArray(this.chartOptions.series)) {
-      this.chartOptions.series.push(closeSeries);
+
+    if (this.activeSeries) {
+      const tradeClicked: ScatterSeriesOption | (number | string | object) = {
+        name: this.activeSeries.name,
+        type: this.activeSeries.seriesType,
+        xAxisIndex: 0,
+        yAxisIndex: 0,
+        symbolSize: 15,
+        itemStyle: {
+          opacity: 1,
+          borderColor: tradeBorderColor,
+          borderWidth: 1.4,
+          color: 'white',
+        },
+        data: [this.activeSeries.data],
+      };
+      this.chartOptions.series.push(tradeClicked);
     }
+
+    this.chartOptions.series.push(tradeSeries);
+    this.chartOptions.series.push(closeSeriesWithoutMerge);
+    this.chartOptions.series.push(closeSeriesFromMerge);
+    this.chartOptions.series.push(mergedToSeries);
     this.chartOptions.series.push(notCloseSeries);
+    this.chartOptions.legend.data.push('Lines');
+    this.chartOptions.legend.data.push('Trades');
+    this.chartOptions.legend.data.push('Trades Merge');
+    this.chartOptions.legend.data.push('Trades not Close');
+    this.chartOptions.legend.data.push('Trades Close');
+    this.chartOptions.legend.data.push('Trades Close from Merge');
 
     // eslint-disable-next-line no-restricted-syntax
     for (const trade of trades) {
-      const data = [trade];
       const { tradeId } = trade[2];
       const foundTradeClose = tradesClose.find((t) => t[2].tradeId === tradeId);
 
-      if (foundTradeClose) {
-        data.push(foundTradeClose);
-
-        const trades: ScatterSeriesOption | (number | string | object) = {
-          name: 'Connected Trades',
+      if (
+        foundTradeClose &&
+        !this.activeTrade &&
+        !foundTradeClose[2].mergedFromTrades &&
+        !foundTradeClose[2].mergedToTrade
+      ) {
+        const connectionsTradesSeries: ScatterSeriesOption | (number | string | object) = {
+          name: 'Lines',
           type: 'line',
           symbol: 'none',
           lineStyle: {
+            color: '#FFFF00',
             type: 'solid',
+            width: 1,
           },
-          data,
+          data: [trade, foundTradeClose],
         };
-        this.chartOptions.series.push(trades);
+        this.chartOptions.series.push(connectionsTradesSeries);
       }
     }
 
+    this.$refs.candleChart.clear();
     this.$refs.candleChart.setOption(this.chartOptions);
   }
 
@@ -838,7 +935,12 @@ export default class CandleChart extends Vue {
         trades.push([
           roundTimeframe(this.timeframems, trade.open_timestamp),
           trade.open_rate,
-          { tradeId: trade.trade_id, buyTag: trade.buy_tag },
+          {
+            tradeId: trade.trade_id,
+            buyTag: trade.buy_tag,
+            mergedFromTrades: trade.merged_from_trades,
+            mergedToTrade: trade.merged_to_trade_id,
+          },
         ]);
       }
       if (
@@ -850,12 +952,30 @@ export default class CandleChart extends Vue {
           tradesClose.push([
             roundTimeframe(this.timeframems, trade.close_timestamp),
             trade.close_rate,
-            { tradeId: trade.trade_id, buyTag: trade.buy_tag },
+            {
+              tradeId: trade.trade_id,
+              buyTag: trade.buy_tag,
+              mergedFromTrades: trade.merged_from_trades,
+              mergedToTrade: trade.merged_to_trade_id,
+            },
           ]);
         }
       }
     }
     return { trades, tradesClose };
+  }
+
+  onChartClick(params) {
+    this.activeTrade = null;
+    this.activeSeries = null;
+    const { tradeId } = params.value[2];
+    this.activeSeries = params;
+    this.activeTrade = this.filteredTrades.find(
+      (t) => t.trade_id === tradeId && t.merged_from_trades,
+    );
+    if (this.activeTrade) {
+      this.updateChart();
+    }
   }
 
   // createSignalData(colDate: number, colOpen: number, colBuy: number, colSell: number): void {

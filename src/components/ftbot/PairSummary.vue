@@ -264,7 +264,6 @@ export default class PairSummary extends Vue {
         }
       });
     }
-    console.log('comb:', comb);
     if (this.sortBy === 'name') {
       comb.sort((a, b) => {
         if (a.pair > b.pair) {
