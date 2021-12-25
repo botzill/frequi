@@ -150,7 +150,7 @@ export default class PairSummary extends Vue {
         });
         const tradeCount = trades.length;
         const trade = tradeCount ? trades[0] : undefined;
-        const volume = trades.length ? trades[trades.length - 1].last_candle.volume : null;
+        const volume = trades.length ? trades[trades.length - 1].stake_amount : null;
         if (trades.length > 0) {
           profitString = `Current profit: ${formatPercent(profit)}`;
         }
@@ -187,7 +187,7 @@ export default class PairSummary extends Vue {
         const profit = 0;
         const profitAbs = 0;
         const superTrendDirection = 0;
-        const volume = trades.length ? trades[trades.length - 1].last_candle.volume : null;
+        const volume = trades.length ? trades[trades.length - 1].stake_amount : null;
 
         // Sort to have longer timeframe in front
         allLocks.sort((a, b) => (a.lock_end_timestamp > b.lock_end_timestamp ? -1 : 1));
@@ -223,7 +223,7 @@ export default class PairSummary extends Vue {
         } = trade;
 
         const superTrendDirection = trade.last_candle.SUPERTd || 0;
-        const { volume } = trade.last_candle;
+        const volume = trade.stake_amount;
         const allLocks = this.currentLocks.filter((el) => el.pair === pair);
         let lockReason = '';
         let locks;
