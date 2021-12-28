@@ -6,6 +6,7 @@
         <b-form-datepicker
           id="start_date"
           v-model="form.start_date"
+          :max="form.end_date"
           today-button
           reset-button
           close-button
@@ -15,6 +16,7 @@
         <b-form-datepicker
           id="end_date"
           v-model="form.end_date"
+          :min="form.start_date"
           today-button
           reset-button
           close-button
