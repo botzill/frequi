@@ -29,7 +29,7 @@
             <BotStatus />
           </b-tab>
           <b-tab title="Performance">
-            <Performance class="performance-view" />
+            <Performance class="performance-view" :pairlist="whitelist" />
           </b-tab>
           <b-tab title="Balance" lazy>
             <Balance />

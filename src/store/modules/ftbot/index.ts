@@ -16,6 +16,7 @@ import {
   EMPTY_PLOTCONFIG,
   AvailablePairPayload,
   PlotConfigStorage,
+  PerformanceFilter,
   WhitelistResponse,
   StrategyResult,
   BalanceInterface,
@@ -705,9 +706,11 @@ export function createBotSubStore(botId: string, botName: string) {
           return Promise.reject(error);
         }
       },
-      async [BotStoreActions.getPerformance]({ commit }) {
+      async [BotStoreActions.getPerformance]({ commit }, filter: PerformanceFilter) {
         try {
-          const result = await api.get('/performance');
+          const result = await api.get('/performance', {
+            params: { ...filter },
+          });
           commit('updatePerformance', result.data);
           return Promise.resolve(result.data);
         } catch (error) {

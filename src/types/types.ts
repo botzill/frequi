@@ -148,6 +148,14 @@ export interface AvailablePairPayload {
   stake_currency?: string;
 }
 
+export interface PerformanceFilter {
+  // eslint-disable-next-line @typescript-eslint/camelcase
+  start_date: string;
+  // eslint-disable-next-line @typescript-eslint/camelcase
+  end_date: string;
+  pair: string;
+}
+
 export interface AvailablePairResult {
   pairs: string[];
   /**
