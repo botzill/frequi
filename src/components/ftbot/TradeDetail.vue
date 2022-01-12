@@ -53,6 +53,9 @@
         <ValuePair v-if="trade.stoploss_last_update_timestamp" description="Stoploss last updated">
           {{ timestampms(trade.stoploss_last_update_timestamp) }}
         </ValuePair>
+        <ValuePair v-if="trade.stoploss_step" description="Stoploss step">
+          {{ trade.stoploss_step }}
+        </ValuePair>
       </div>
     </div>
   </div>

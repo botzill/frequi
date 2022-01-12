@@ -61,6 +61,7 @@ export interface Trade {
   stoploss_order_id?: string;
   stoploss_last_update?: string;
   stoploss_last_update_timestamp?: number;
+  stoploss_step?: object;
   initial_stop_loss_abs?: number;
   initial_stop_loss_ratio?: number;
   initial_stop_loss_pct?: number;
