@@ -14,7 +14,7 @@
         <ShowIcon v-else :size="16" />
       </b-form-checkbox>
     </div>
-    <BalanceChart :balance="balance" />
+    <BalanceChart v-if="balanceCurrencies" :currencies="balanceCurrencies" />
     <div>
       <p v-if="balance.note">
         <strong>{{ balance.note }}</strong>
@@ -53,9 +53,13 @@ export default class Balance extends Vue {
 
   @ftbot.Getter [BotStoreGetters.balance]!: BalanceInterface;
 
+  @ftbot.Getter [BotStoreGetters.stakeCurrencyDecimals]!: number;
+
   hideSmallBalances = true;
 
-  smallBalance = 0.00001;
+  get smallBalance(): number {
+    return Number((0.1 ** this.stakeCurrencyDecimals).toFixed(8));
+  }
 
   get balanceCurrencies() {
     if (!this.hideSmallBalances) {
