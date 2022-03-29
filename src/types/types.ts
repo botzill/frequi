@@ -5,7 +5,7 @@ export enum OrderSides {
 
 export interface ForceEnterPayload {
   pair: string;
-  orderside?: OrderSides;
+  side?: OrderSides;
   price?: number;
   ordertype?: string;
   stakeamount?: number;
@@ -75,11 +75,17 @@ export interface UnfilledTimeout {
 }
 
 export interface OrderTypes {
-  buy: string;
-  sell: string;
-  emergencysell?: string;
+  buy?: string;
+  sell?: string;
   forcesell?: string;
   forcebuy?: string;
+  emergencysell?: string;
+  // TODO: this will need updating for futures, removal of the above, and mandatory of certain values.
+  entry?: string;
+  exit?: string;
+  emergencyexit?: string;
+  forcesexit?: string;
+  forceentry?: string;
   stoploss: string;
   stoploss_on_exchange: boolean;
   stoploss_on_exchange_interval: number;
@@ -106,7 +112,8 @@ export interface BotState {
   /** Api version - was not provided prior to 1.1 (or 2021.11) */
   api_version?: number;
   dry_run: boolean;
-  trading_mode?: string;
+  /** Futures, margin or spot */
+  trading_mode?: 'futures' | 'margin' | 'spot';
   short_allowed?: boolean;
   state: BotStates;
   runmode: RunModes;
@@ -118,7 +125,7 @@ export interface BotState {
   forcebuy_enabled: boolean;
   max_open_trades: number;
   minimal_roi: object;
-  stake_amount: number;
+  stake_amount: string;
   stake_currency: string;
   stake_currency_decimals?: number;
   available_balance?: number;
@@ -137,6 +144,9 @@ export interface BotState {
   trailing_stop: boolean;
   trailing_stop_positive: number;
   trailing_stop_positive_offset: number;
+
+  position_adjustment_enable?: boolean;
+  max_entry_position_adjustment?: number;
 }
 
 export interface StrategyListResult {
@@ -175,7 +185,7 @@ export interface AvailablePairResult {
 export interface PairCandlePayload {
   pair: string;
   timeframe: string;
-  limit: number;
+  limit?: number;
 }
 
 export interface PairHistoryPayload {
@@ -191,7 +201,7 @@ export interface PairHistory {
   timeframe: string;
   timeframe_ms: number;
   columns: string[];
-  data: number[];
+  data: Array<number[]>;
   length: number;
   /** Number of buy signals in this response */
   buy_signals: number;
@@ -223,6 +233,11 @@ export interface SysInfoResponse {
   ram_pct: number;
 }
 
+export interface HealthResponse {
+  last_process: string;
+  last_process_ts: number;
+}
+
 export interface StatusResponse {
   status: string;
 }
@@ -237,3 +252,5 @@ export interface DeleteTradeResponse {
 export interface UiVersion {
   version: string;
 }
+
+export type LoadingStatus = 'loading' | 'success' | 'error';

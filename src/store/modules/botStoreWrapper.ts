@@ -6,6 +6,7 @@ import {
   DailyReturnValue,
   MultiDeletePayload,
   MultiForcesellPayload,
+  RenameBotPayload,
   Trade,
 } from '@/types';
 import { AxiosInstance } from 'axios';
@@ -122,7 +123,7 @@ export default function createBotStore(store) {
     [MultiBotStoreGetters.allDailyStatsAllBots](state: FTMultiBotState, getters): DailyReturnValue {
       const resp: Record<string, DailyRecord> = {};
       getters.allAvailableBotsList.forEach((botId) => {
-        const x = getters[`${botId}/${BotStoreGetters.dailyStats}`]?.data?.forEach((d) => {
+        getters[`${botId}/${BotStoreGetters.dailyStats}`]?.data?.forEach((d) => {
           if (!resp[d.date]) {
             resp[d.date] = { ...d };
           } else {
@@ -182,7 +183,15 @@ export default function createBotStore(store) {
       state.refreshing = refreshing;
     },
     addBot(state: FTMultiBotState, bot: BotDescriptor) {
-      state.availableBots[bot.botId] = bot;
+      // When Vue gets initialized, only existing objects will be added with reactivity.
+      // To add reactivity to new property, we need to mutate the already reactive object.
+      state.availableBots = {
+        ...state.availableBots,
+        [bot.botId]: bot,
+      };
+    },
+    renameBot(state: FTMultiBotState, bot: RenameBotPayload) {
+      state.availableBots[bot.botId].botName = bot.botName;
     },
     removeBot(state: FTMultiBotState, botId: string) {
       if (botId in state.availableBots) {
@@ -213,6 +222,17 @@ export default function createBotStore(store) {
       );
       dispatch(`${bot.botId}/botAdded`);
       commit('addBot', bot);
+    },
+    renameBot({ dispatch, getters, commit }, bot: RenameBotPayload) {
+      if (!Object.keys(getters.allAvailableBots).includes(bot.botId)) {
+        // TODO: handle error!
+        console.error('Bot not found');
+        return;
+      }
+
+      dispatch(`${bot.botId}/rename`, bot.botName).then(() => {
+        commit('renameBot', bot);
+      });
     },
     removeBot({ commit, getters, dispatch }, botId: string) {
       if (Object.keys(getters.allAvailableBots).includes(botId)) {

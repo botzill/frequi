@@ -40,18 +40,24 @@
             >Short exits: {{ dataset.exit_short_signals }}</small
           >
         </div>
-        <div class="ml-auto mr-2">
-          <b-select
-            v-model="plotConfigName"
-            :options="availablePlotConfigNames"
-            size="sm"
-            @change="plotConfigChanged"
-          >
-          </b-select>
-        </div>
+        <div class="ml-auto d-flex align-items-center">
+          <b-form-checkbox v-model="heikinAshi">Heikin Ashi</b-form-checkbox>
 
-        <div class="mr-0 mr-md-1">
-          <b-button size="sm" title="Plot configurator" @click="showConfigurator">&#9881;</b-button>
+          <div class="ml-2">
+            <b-select
+              v-model="plotConfigName"
+              :options="availablePlotConfigNames"
+              size="sm"
+              @change="plotConfigChanged"
+            >
+            </b-select>
+          </div>
+
+          <div class="ml-2 mr-0 mr-md-1">
+            <b-button size="sm" title="Plot configurator" @click="showConfigurator">
+              &#9881;
+            </b-button>
+          </div>
         </div>
       </div>
       <div class="row mr-1 ml-1 h-100">
@@ -60,11 +66,18 @@
           :dataset="dataset"
           :trades="trades"
           :plot-config="plotConfig"
+          :heikin-ashi="heikinAshi"
           :use-u-t-c="timezone === 'UTC'"
           :theme="getChartTheme"
         >
         </CandleChart>
-        <label v-else style="margin: auto auto; font-size: 1.5rem">No data available</label>
+        <div v-else class="m-auto">
+          <b-spinner v-if="isLoadingDataset" label="Spinning" />
+
+          <div v-else style="font-size: 1.5rem">
+            {{ noDatasetText }}
+          </div>
+        </div>
       </div>
     </div>
     <transition name="fade" mode="in-out">
@@ -85,6 +98,7 @@ import {
   PlotConfig,
   PairCandlePayload,
   PairHistoryPayload,
+  LoadingStatus,
 } from '@/types';
 import CandleChart from '@/components/charts/CandleChart.vue';
 import PlotConfigurator from '@/components/charts/PlotConfigurator.vue';
@@ -125,13 +139,19 @@ export default class CandleChartContainer extends Vue {
 
   showPlotConfig = this.plotConfigModal;
 
+  heikinAshi: boolean = false;
+
   @Getter getChartTheme!: string;
 
   @ftbot.Getter [BotStoreGetters.availablePlotConfigNames]!: string[];
 
   @ftbot.Action setPlotConfigName;
 
+  @ftbot.Getter [BotStoreGetters.candleDataStatus]!: LoadingStatus;
+
   @ftbot.Getter [BotStoreGetters.candleData]!: PairHistory;
+
+  @ftbot.Getter [BotStoreGetters.historyStatus]!: LoadingStatus;
 
   @ftbot.Getter [BotStoreGetters.history]!: PairHistory;
 
@@ -160,6 +180,32 @@ export default class CandleChartContainer extends Vue {
     return this.dataset ? this.dataset.columns : [];
   }
 
+  get isLoadingDataset(): boolean {
+    if (this.historicView) {
+      return this.historyStatus === 'loading';
+    }
+
+    return this.candleDataStatus === 'loading';
+  }
+
+  get noDatasetText(): string {
+    const status = this.historicView ? this.historyStatus : this.candleDataStatus;
+
+    switch (status) {
+      case 'loading':
+        return 'Loading...';
+
+      case 'success':
+        return 'No data available';
+
+      case 'error':
+        return 'Failed to load data';
+
+      default:
+        return 'Unknown';
+    }
+  }
+
   get hasDataset(): boolean {
     return !!this.dataset;
   }
@@ -172,6 +218,10 @@ export default class CandleChartContainer extends Vue {
     }
     this.plotConfigName = getPlotConfigName();
     this.plotConfig = getCustomPlotConfig(this.plotConfigName);
+
+    if (!this.hasDataset) {
+      this.refresh();
+    }
   }
 
   plotConfigChanged() {
