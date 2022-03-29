@@ -37,6 +37,7 @@ import {
   DeleteTradeResponse,
   BlacklistResponse,
   ForceSellPayload,
+  LoadingStatus,
 } from '@/types';
 
 import {
@@ -91,12 +92,14 @@ export enum BotStoreGetters {
   pairlist = 'pairlist',
   balance = 'balance',
   detailTradeId = 'detailTradeId',
+  historyStatus = 'historyStatus',
   history = 'history',
   lastLogs = 'lastLogs',
   performanceStats = 'performanceStats',
   dailyStats = 'dailyStats',
   strategy = 'strategy',
   strategyList = 'strategyList',
+  candleDataStatus = 'candleDataStatus',
   candleData = 'candleData',
   backtestRunning = 'backtestRunning',
   backtestStep = 'backtestStep',
@@ -153,6 +156,7 @@ export enum BotStoreActions {
   setBacktestResultKey = 'setBacktestResultKey',
   sysInfo = 'sysInfo',
   logout = 'logout',
+  rename = 'rename',
 }
 
 export function createBotSubStore(botId: string, botName: string) {
@@ -311,8 +315,14 @@ export function createBotSubStore(botId: string, botName: string) {
       [BotStoreGetters.strategyList](state: FtbotStateType): string[] {
         return state.strategyList;
       },
+      [BotStoreGetters.candleDataStatus](state: FtbotStateType): LoadingStatus {
+        return state.candleDataStatus;
+      },
       [BotStoreGetters.candleData](state: FtbotStateType): PairHistory | {} {
         return state.candleData;
+      },
+      [BotStoreGetters.historyStatus](state: FtbotStateType): LoadingStatus {
+        return state.historyStatus;
       },
       // TODO: Type me
       [BotStoreGetters.history](state: FtbotStateType) {
@@ -407,8 +417,14 @@ export function createBotSubStore(botId: string, botName: string) {
       updatePairs(state: FtbotStateType, pairlist: string[]) {
         state.pairlist = pairlist;
       },
+      setCandleDataStatus(state: FtbotStateType, loading: LoadingStatus) {
+        state.candleDataStatus = loading;
+      },
       updatePairCandles(state: FtbotStateType, { pair, timeframe, data }) {
         state.candleData = { ...state.candleData, [`${pair}__${timeframe}`]: data };
+      },
+      setHistoryStatus(state: FtbotStateType, loading: LoadingStatus) {
+        state.historyStatus = loading;
       },
       updatePairHistory(state: FtbotStateType, { pair, timeframe, data }) {
         // Intentionally drop the previous state here.
@@ -473,6 +489,9 @@ export function createBotSubStore(botId: string, botName: string) {
       },
       [BotStoreActions.logout]() {
         userService.logout();
+      },
+      [BotStoreActions.rename](ctx, name) {
+        userService.renameBot(name);
       },
       [BotStoreActions.setRefreshRequired]({ commit }, refreshRequired: boolean) {
         commit('updateRefreshRequired', refreshRequired);
@@ -621,7 +640,8 @@ export function createBotSubStore(botId: string, botName: string) {
           .catch(console.error);
       },
       [BotStoreActions.getPairCandles]({ commit }, payload: PairCandlePayload) {
-        if (payload.pair && payload.timeframe && payload.limit) {
+        if (payload.pair && payload.timeframe) {
+          commit('setCandleDataStatus', 'loading');
           return api
             .get('/pair_candles', {
               params: { ...payload },
@@ -632,8 +652,12 @@ export function createBotSubStore(botId: string, botName: string) {
                 timeframe: payload.timeframe,
                 data: result.data,
               });
+              commit('setCandleDataStatus', 'success');
             })
-            .catch(console.error);
+            .catch((err) => {
+              console.error(err);
+              commit('setCandleDataStatus', 'error');
+            });
         }
         // Error branchs
         const error = 'pair or timeframe not specified';
@@ -644,6 +668,7 @@ export function createBotSubStore(botId: string, botName: string) {
       },
       [BotStoreActions.getPairHistory]({ commit }, payload: PairHistoryPayload) {
         if (payload.pair && payload.timeframe && payload.timerange) {
+          commit('setHistoryStatus', 'loading');
           return api
             .get('/pair_history', {
               params: { ...payload },
@@ -656,8 +681,12 @@ export function createBotSubStore(botId: string, botName: string) {
                 timerange: payload.timerange,
                 data: result.data,
               });
+              commit('setHistoryStatus', 'success');
             })
-            .catch(console.error);
+            .catch((err) => {
+              console.error(err);
+              commit('setHistoryStatus', 'error');
+            });
         }
         // Error branchs
         const error = 'pair or timeframe or timerange not specified';
