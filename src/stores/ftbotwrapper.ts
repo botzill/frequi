@@ -250,7 +250,7 @@ export const useBotStore = defineStore('wrapper', {
         // Set interval for refresh
         const refreshInterval = window.setInterval(() => {
           this.allRefreshFrequent();
-        }, 5000);
+        }, 60000);
         this.refreshInterval = refreshInterval;
       }
       if (!this.refreshIntervalSlow) {
