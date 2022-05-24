@@ -205,17 +205,22 @@ export function createBotSubStore(botId: string, botName: string) {
         }
         // Refresh data only when needed
         if (forceUpdate || this.refreshRequired) {
-          // TODO: Should be AxiosInstance
-          const updates: Promise<any>[] = [];
-          updates.push(this.getPerformance());
-          updates.push(this.getProfit());
-          updates.push(this.getTrades());
-          updates.push(this.getBalance());
-          //     /* white/blacklist might be refreshed more often as they are not expensive on the backend */
-          updates.push(this.getWhitelist());
-          updates.push(this.getBlacklist());
-          await Promise.all(updates);
-          this.refreshRequired = false;
+          try {
+            this.refreshing = true;
+            // TODO: Should be AxiosInstance
+            const updates: Promise<any>[] = [];
+            updates.push(this.getPerformance());
+            updates.push(this.getProfit());
+            updates.push(this.getTrades());
+            updates.push(this.getBalance());
+            //     /* white/blacklist might be refreshed more often as they are not expensive on the backend */
+            updates.push(this.getWhitelist());
+            updates.push(this.getBlacklist());
+            await Promise.all(updates);
+            this.refreshRequired = false;
+          } finally {
+            this.refreshing = false;
+          }
         }
         return Promise.resolve();
       },

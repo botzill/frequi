@@ -186,6 +186,18 @@ export default defineComponent({
           metric: 'Entry/Exit timeouts',
           value: `${props.backtestResult.timedout_entry_orders} / ${props.backtestResult.timedout_exit_orders}`,
         },
+        {
+          metric: 'Canceled Trade Entries',
+          value: props.backtestResult.canceled_trade_entries ?? 'N/A',
+        },
+        {
+          metric: 'Canceled Entry Orders',
+          value: props.backtestResult.canceled_entry_orders ?? 'N/A',
+        },
+        {
+          metric: 'Replaced Entry Orders',
+          value: props.backtestResult.replaced_entry_orders ?? 'N/A',
+        },
 
         ...shortMetrics,
 
@@ -224,8 +236,8 @@ export default defineComponent({
             props.backtestResult.worst_pair.profit_sum,
           )}`,
         },
-        { metric: 'Best single Trade', value: bestPair },
-        { metric: 'Worst single Trade', value: worstPair },
+        { metric: 'Best single Trade', value: bestPair.value },
+        { metric: 'Worst single Trade', value: worstPair.value },
       ];
     });
 
