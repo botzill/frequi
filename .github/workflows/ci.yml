@@ -11,17 +11,24 @@ on:
   release:
     types: [ published ]
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         os: [ ubuntu-20.04 ]
+        node: [ "14", "16", "17", "18"]
 
     steps:
     - uses: actions/checkout@v3
 
     - uses: actions/setup-node@v3
+      with:
+        node-version: ${{ matrix.node }}
 
     - run: yarn install
 
@@ -35,7 +42,7 @@ jobs:
       run: yarn test:unit
 
     - name: Run Component tests
-      uses: cypress-io/github-action@v2
+      uses: cypress-io/github-action@v4
       with:
         # we have already installed everything
         install: false
@@ -43,7 +50,7 @@ jobs:
         command: yarn cypress run-ct
 
     - name: Cypress run
-      uses: cypress-io/github-action@v2
+      uses: cypress-io/github-action@v4
       with:
         # build: yarn build
         start: yarn serve
@@ -63,7 +70,7 @@ jobs:
         retention-days: 10
 
     - name: Zip files for release
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' && matrix.node == '18'
       run: |
         cd dist/
         zip -r ../freqUI.zip .
@@ -72,7 +79,7 @@ jobs:
 
     - name: Upload release binaries
       uses: alexellis/upload-assets@0.3.0
-      if: github.event_name == 'release'
+      if: github.event_name == 'release' && matrix.node == '18'
       env:
         GITHUB_TOKEN: ${{ github.token }}
       with:

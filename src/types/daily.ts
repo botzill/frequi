@@ -7,6 +7,9 @@ export interface DailyRecord {
   [key: string]: string | number;
   date: string;
   abs_profit: number;
+  /** added in  2.16*/
+  rel_profit: number;
+  starting_balance_profit: number;
   fiat_value: number;
   trade_count: number;
 }
